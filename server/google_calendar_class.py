@@ -25,8 +25,16 @@ class GoogleCalendarManager:
                 creds.refresh(Request())
             else:
                 flow = InstalledAppFlow.from_client_secrets_file("client_secret_app_escritorio_oauth.json", SCOPES)
-                creds = flow.run_local_server(port=0)
-
+                #creds = flow.run_local_server(port=0)
+                flow.redirect_uri = "urn:ietf:wg:oauth:2.0:oob"
+                auth_url, _ = flow.authorization_url(prompt='consent')
+                # Imprime la URL de autenticación para abrirla en el navegador local
+                print(f"Por favor, abre este enlace en tu navegador: {auth_url}")
+                
+                # Después de autenticarte, obtén el código de autorización
+                code = input('Introduce el código de autorización: ')
+                flow.fetch_token(code=code)
+                creds = flow.credentials
             # Save the credentials for the next run
             with open("token.json", "w") as token:
                 token.write(creds.to_json())
