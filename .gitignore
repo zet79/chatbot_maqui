@@ -5,7 +5,8 @@
 __pycache__/
 
 # Ignorar hojas de cálculo de Excel
-*.xlsx
+#*.xlsx
+~$clientes.xlsx
 
 # Ignorar archivo de api keys 
 api_keys.py

@@ -281,6 +281,10 @@ def whatsapp_bot():
     client.messages.create(body=response_message, from_='whatsapp:+14155238886', to=sender)
     return 'OK', 200
 
+@app.route("/")
+def home():
+    return "El servidor está funcionando correctamente."
+
 if __name__ == '__main__':
     iniciar_conversacion()
-    app.run(debug=True, port=5000)
+    app.run(host='0.0.0.0',debug=True, port=5000)
