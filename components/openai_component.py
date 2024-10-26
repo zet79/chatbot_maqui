@@ -1,5 +1,5 @@
 import openai
-from api_keys import openai_api_key
+from api_keys.api_keys import openai_api_key
 
 class OpenAIManager:
     def __init__(self):
