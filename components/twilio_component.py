@@ -9,6 +9,8 @@ class TwilioManager:
         return Client(account_sid, auth_token)
 
     def send_message(self, to_number, message_body):
+        to_number = f'whatsapp:{to_number}' if not to_number.startswith('whatsapp:') else to_number
+
         message = self.client.messages.create(
             body=message_body,
             from_='whatsapp:+14155238886',  # Cambia por tu número de Twilio

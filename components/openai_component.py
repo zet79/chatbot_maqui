@@ -1,37 +1,92 @@
-import openai
+from openai import OpenAI
 from api_keys.api_keys import openai_api_key
+from prompt.prompt import prompt_intenciones, prompt_consulta_v2, prompt_lead_estado, prompt_cliente_nombre
+from helpers.helpers import formatear_conversacion, formatear_historial_conversaciones, formatear_horarios_disponibles
+import pytz
+from datetime import datetime
 
 class OpenAIManager:
     def __init__(self):
-        openai.api_key = openai_api_key
+        self.client = OpenAI(api_key=openai_api_key)
 
-    def consult_product(self, user_question, conversation_history):
-        response = openai.ChatCompletion.create(
-            model="gpt-4",
+    def consulta(self, cliente,conversation_actual, conversation_history):
+        response = self.client.chat.completions.create(
+            model="gpt-4o",
             messages=[
-                {"role": "system", "content": "Eres un asistente virtual especializado en trasplantes capilares."},
-                {"role": "user", "content": conversation_history + f"\nUser: {user_question}"}
+                {"role": "system", "content": prompt_consulta_v2(cliente) + formatear_conversacion(conversation_actual)},
             ],
             max_tokens=100,
         )
         return response.choices[0].message.content.strip()
 
-    def clasificar_intencion(self, mensaje, conversation_history):
-        response = openai.ChatCompletion.create(
-            model="gpt-4",
+    def clasificar_intencion(self, conversation_actual, conversation_history):
+        conversacion_actual_formateada = formatear_conversacion(conversation_actual)
+        #conversacion_history_formateada = formatear_historial_conversaciones(conversation_history)
+        print("Fecha actual",datetime.now(pytz.timezone("America/Lima")).strftime("%Y-%m-%d"))
+        response = self.client.chat.completions.create(
+            model="gpt-4o",
             messages=[
-                {"role": "system", "content": 
-                    """
-                    Eres un asistente virtual especializado en tratamientos capilares y trasplantes. 
-                    Identifica la intención del usuario en base a las siguientes categorías:
-                    - agendar una cita sin fecha
-                    - agendar una cita con fecha
-                    - hacer una consulta
-                    - otros
-                    """
-                 },
-                {"role": "user", "content": conversation_history + f"\nUser: {mensaje}"}
-            ]
+                {"role": "system", "content": prompt_intenciones(datetime.now(pytz.timezone("America/Lima")).strftime("%Y-%m-%d")) + conversacion_actual_formateada},
+                #{"role": "user", "content": conversacion_actual_formateada}
+            ],
+            max_tokens=50,
+        )
+        #print("Conversación actual formateada:", conversacion_actual_formateada)
+        print("Prompt intenciones:", prompt_intenciones(datetime.now(pytz.timezone("America/Lima")).strftime("%Y-%m-%d")) + conversacion_actual_formateada)
+        return response.choices[0].message.content.strip()
+
+    def consultaHorarios(self, horarios_disponibles, conversation_actual, conversation_history, fecha):
+        horarios_disponibles = formatear_horarios_disponibles(horarios_disponibles)
+        response = self.client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": prompt_consulta_v2() + formatear_conversacion(conversation_actual)
+                    + f"\n Los horarios disponibles para que le digas al cliente son {horarios_disponibles}"},
+            ],
+            max_tokens=100,
+        )
+        return response.choices[0].message.content.strip()
+
+    def consultaCitareservada(self, reserva_cita, conversation_actual, conversation_history):
+        response = self.client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": prompt_consulta_v2() + formatear_conversacion(conversation_actual)
+                    + "\n Dile que la cita ha sido reservada para el "},
+            ],
+            max_tokens=100,
+        )
+        return response.choices[0].message.content.strip()
+    
+    def consultaPago(self, link_pago, conversation_actual, conversation_history):
+        response = self.client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": prompt_consulta_v2() + formatear_conversacion(conversation_actual)
+                    + f"\n Este es el link de pago que le digas :  {link_pago}"},
+            ],
+            max_tokens=100,
+        )
+        return response.choices[0].message.content.strip()
+
+    def consultaLead(self, lead):
+        response = self.client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": prompt_lead_estado(lead) },
+            ],
+            max_tokens=100,
+        )
+        print("Prompt lead :", prompt_lead_estado(lead))
+        return response.choices[0].message.content.strip()
+    
+    def consultaNombre(self, cliente, response_message):
+        response = self.client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": prompt_cliente_nombre(cliente, response_message)},
+            ],
+            max_tokens=100,
         )
         return response.choices[0].message.content.strip()
 
