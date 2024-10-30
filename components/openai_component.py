@@ -19,6 +19,14 @@ class OpenAIManager:
         )
         return response.choices[0].message.content.strip()
 
+    def obtener_todos_los_clientes(self):
+        cursor = self.connection.cursor(dictionary=True)
+        sql = "SELECT * FROM clientes"
+        cursor.execute(sql)
+        clientes = cursor.fetchall()
+        cursor.close()
+        return clientes
+
     def clasificar_intencion(self, conversation_actual, conversation_history):
         conversacion_actual_formateada = formatear_conversacion(conversation_actual)
         #conversacion_history_formateada = formatear_historial_conversaciones(conversation_history)
@@ -35,34 +43,34 @@ class OpenAIManager:
         print("Prompt intenciones:", prompt_intenciones(datetime.now(pytz.timezone("America/Lima")).strftime("%Y-%m-%d")) + conversacion_actual_formateada)
         return response.choices[0].message.content.strip()
 
-    def consultaHorarios(self, horarios_disponibles, conversation_actual, conversation_history, fecha):
+    def consultaHorarios(self,cliente_mysql, horarios_disponibles, conversation_actual, conversation_history, fecha):
         horarios_disponibles = formatear_horarios_disponibles(horarios_disponibles)
         response = self.client.chat.completions.create(
             model="gpt-4o",
             messages=[
-                {"role": "system", "content": prompt_consulta_v2() + formatear_conversacion(conversation_actual)
+                {"role": "system", "content": prompt_consulta_v2(cliente_mysql) + formatear_conversacion(conversation_actual)
                     + f"\n Los horarios disponibles para que le digas al cliente son {horarios_disponibles}"},
             ],
             max_tokens=100,
         )
         return response.choices[0].message.content.strip()
 
-    def consultaCitareservada(self, reserva_cita, conversation_actual, conversation_history):
+    def consultaCitareservada(self,cliente_mysql, reserva_cita, conversation_actual, conversation_history):
         response = self.client.chat.completions.create(
             model="gpt-4o",
             messages=[
-                {"role": "system", "content": prompt_consulta_v2() + formatear_conversacion(conversation_actual)
+                {"role": "system", "content": prompt_consulta_v2(cliente_mysql) + formatear_conversacion(conversation_actual)
                     + "\n Dile que la cita ha sido reservada para el "},
             ],
             max_tokens=100,
         )
         return response.choices[0].message.content.strip()
     
-    def consultaPago(self, link_pago, conversation_actual, conversation_history):
+    def consultaPago(self, cliente_mysql,link_pago, conversation_actual, conversation_history):
         response = self.client.chat.completions.create(
             model="gpt-4o",
             messages=[
-                {"role": "system", "content": prompt_consulta_v2() + formatear_conversacion(conversation_actual)
+                {"role": "system", "content": prompt_consulta_v2(cliente_mysql) + formatear_conversacion(conversation_actual)
                     + f"\n Este es el link de pago que le digas :  {link_pago}"},
             ],
             max_tokens=100,
