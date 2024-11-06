@@ -1,6 +1,6 @@
 from openai import OpenAI
 from api_keys.api_keys import openai_api_key
-from prompt.prompt import prompt_intenciones, prompt_consulta_v2, prompt_lead_estado, prompt_cliente_nombre
+from prompt.prompt import prompt_intenciones, prompt_consulta_v2, prompt_lead_estado, prompt_cliente_nombre, prompt_consulta_v3, prompt_lead_estado_zoho
 from helpers.helpers import formatear_conversacion, formatear_historial_conversaciones, formatear_horarios_disponibles
 import pytz
 from datetime import datetime
@@ -13,9 +13,9 @@ class OpenAIManager:
         response = self.client.chat.completions.create(
             model="gpt-4o",
             messages=[
-                {"role": "system", "content": prompt_consulta_v2(cliente) + formatear_conversacion(conversation_actual)},
+                {"role": "system", "content": prompt_consulta_v3(cliente) + formatear_conversacion(conversation_actual)},
             ],
-            max_tokens=100,
+            max_tokens=250,
         )
         return response.choices[0].message.content.strip()
 
@@ -48,7 +48,7 @@ class OpenAIManager:
         response = self.client.chat.completions.create(
             model="gpt-4o",
             messages=[
-                {"role": "system", "content": prompt_consulta_v2(cliente_mysql) + formatear_conversacion(conversation_actual)
+                {"role": "system", "content": prompt_consulta_v3(cliente_mysql) + formatear_conversacion(conversation_actual)
                     + f"\n Los horarios disponibles para que le digas al cliente son {horarios_disponibles}"},
             ],
             max_tokens=100,
@@ -59,7 +59,7 @@ class OpenAIManager:
         response = self.client.chat.completions.create(
             model="gpt-4o",
             messages=[
-                {"role": "system", "content": prompt_consulta_v2(cliente_mysql) + formatear_conversacion(conversation_actual)
+                {"role": "system", "content": prompt_consulta_v3(cliente_mysql) + formatear_conversacion(conversation_actual)
                     + "\n Dile que la cita ha sido reservada para el "},
             ],
             max_tokens=100,
@@ -70,7 +70,7 @@ class OpenAIManager:
         response = self.client.chat.completions.create(
             model="gpt-4o",
             messages=[
-                {"role": "system", "content": prompt_consulta_v2(cliente_mysql) + formatear_conversacion(conversation_actual)
+                {"role": "system", "content": prompt_consulta_v3(cliente_mysql) + formatear_conversacion(conversation_actual)
                     + f"\n Este es el link de pago que le digas :  {link_pago}"},
             ],
             max_tokens=100,
@@ -86,6 +86,17 @@ class OpenAIManager:
             max_tokens=100,
         )
         print("Prompt lead :", prompt_lead_estado(lead))
+        return response.choices[0].message.content.strip()
+    
+    def consultaLeadZoho(self, lead):
+        response = self.client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": prompt_lead_estado_zoho(lead) },
+            ],
+            max_tokens=100,
+        )
+        print("Prompt lead :", prompt_lead_estado_zoho(lead))
         return response.choices[0].message.content.strip()
     
     def consultaNombre(self, cliente, response_message):
