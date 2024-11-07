@@ -96,7 +96,7 @@ class OpenAIManager:
             ],
             max_tokens=100,
         )
-        print("Prompt lead :", prompt_lead_estado_zoho(lead))
+        #print("Prompt lead :", prompt_lead_estado_zoho(lead))
         return response.choices[0].message.content.strip()
     
     def consultaNombre(self, cliente, response_message):
