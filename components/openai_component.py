@@ -99,11 +99,11 @@ class OpenAIManager:
         #print("Prompt lead :", prompt_lead_estado_zoho(lead))
         return response.choices[0].message.content.strip()
     
-    def consultaNombre(self, cliente, response_message):
+    def consultaNombre(self, cliente, response_message,conversation_actual):
         response = self.client.chat.completions.create(
             model="gpt-4o",
             messages=[
-                {"role": "system", "content": prompt_cliente_nombre(cliente, response_message)},
+                {"role": "system", "content": prompt_cliente_nombre(cliente, response_message,formatear_conversacion(conversation_actual))},
             ],
             max_tokens=100,
         )
