@@ -1,6 +1,6 @@
 from openai import OpenAI
 from api_keys.api_keys import openai_api_key
-from prompt.prompt import prompt_intenciones, prompt_consulta_v2, prompt_lead_estado, prompt_cliente_nombre, prompt_consulta_v3, prompt_lead_estado_zoho
+from prompt.prompt import prompt_intenciones, prompt_consulta_v2, prompt_lead_estado, prompt_cliente_nombre, prompt_consulta_v3, prompt_lead_estado_zoho, prompt_intencionesv2
 from helpers.helpers import formatear_conversacion, formatear_historial_conversaciones, formatear_horarios_disponibles
 import pytz
 from datetime import datetime
@@ -34,7 +34,7 @@ class OpenAIManager:
         response = self.client.chat.completions.create(
             model="gpt-4o",
             messages=[
-                {"role": "system", "content": prompt_intenciones(datetime.now(pytz.timezone("America/Lima")).strftime("%Y-%m-%d")) + conversacion_actual_formateada},
+                {"role": "system", "content": prompt_intencionesv2(datetime.now(pytz.timezone("America/Lima")).strftime("%Y-%m-%d")) + conversacion_actual_formateada},
                 #{"role": "user", "content": conversacion_actual_formateada}
             ],
             max_tokens=50,
