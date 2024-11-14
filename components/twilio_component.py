@@ -13,8 +13,8 @@ class TwilioManager:
 
         message = self.client.messages.create(
             body=message_body,
-            from_='whatsapp:+51944749102',  # Cambia por tu número de Twilio
-            #from_='whatsapp:+14155238886',  # Cambia por tu número de Twilio
+            #from_='whatsapp:+51944749102',  # Cambia por tu número de Twilio
+            from_='whatsapp:+14155238886',  # Cambia por tu número de Twilio
             to=to_number
         )
         print(f"Message sent to {to_number}: {message.sid}")
