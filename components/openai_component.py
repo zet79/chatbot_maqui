@@ -32,7 +32,7 @@ class OpenAIManager:
             max_tokens=50,
         )
         #print("Conversación actual formateada:", conversacion_actual_formateada)
-        print("Prompt intenciones:", prompt_intenciones(datetime.now(pytz.timezone("America/Lima")).strftime("%Y-%m-%d")) + conversacion_actual_formateada)
+        #print("Prompt intenciones:", prompt_intenciones(datetime.now(pytz.timezone("America/Lima")).strftime("%Y-%m-%d")) + conversacion_actual_formateada)
         return response.choices[0].message.content.strip()
 
     def consultaHorarios(self,cliente_mysql, horarios_disponibles, conversation_actual, conversation_history, fecha):
