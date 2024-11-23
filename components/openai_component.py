@@ -52,7 +52,7 @@ class OpenAIManager:
             model="gpt-4o",
             messages=[
                 {"role": "system", "content": prompt_consulta_v4(cliente_mysql) + formatear_conversacion(conversation_actual)
-                    + "\n Dile que la cita ha sido reservada para  el ...  y mandale el link pago.}"},
+                    + "\n Dile que la cita ha sido reservada para  el ...  y mandale el link pago mencionandole que atraves de este link puede pagar usando yape, plin o tarjetas credito/debito.}"},
             ],
             max_tokens=100,
         )
