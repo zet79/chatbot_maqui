@@ -63,7 +63,7 @@ class OpenAIManager:
             model="gpt-4o",
             messages=[
                 {"role": "system", "content": prompt_consulta_v4(cliente_mysql) + formatear_conversacion(conversation_actual)
-                    + f"\n Este es el link de pago que le digas :  {link_pago}"},
+                    },
             ],
             max_tokens=100,
         )
