@@ -9,11 +9,11 @@ class OpenAIManager:
     def __init__(self):
         self.client = OpenAI(api_key=openai_api_key)
 
-    def consulta(self, cliente,conversation_actual, conversation_history):
+    def consulta(self, cliente,conversation_actual, conversation_history,cliente_nuevo,campania):
         response = self.client.chat.completions.create(
             model="gpt-4o",
             messages=[
-                {"role": "system", "content": prompt_consulta_v4(cliente) + formatear_conversacion(conversation_actual)},
+                {"role": "system", "content": prompt_consulta_v4(cliente,cliente_nuevo,campania) + formatear_conversacion(conversation_actual)},
             ],
             max_tokens=250,
         )
