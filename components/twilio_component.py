@@ -29,8 +29,10 @@ class TwilioManager:
         message = self.client.messages.create(
             content_sid=template_content_sid,  # Aquí pones el Content SID de la plantilla
             from_='whatsapp:+51944749102',  # Número de Twilio
+            #from_='whatsapp:+14155238886',
             to=to_number,
             content_variables=parameters  # Parámetros de la plantilla
         )
+        print("message : ", message)
         print(f"Template message sent to {to_number}: {message.sid}")
         return message.sid
