@@ -35,34 +35,34 @@ class OpenAIManager:
         #print("Prompt intenciones:", prompt_intenciones(datetime.now(pytz.timezone("America/Lima")).strftime("%Y-%m-%d")) + conversacion_actual_formateada)
         return response.choices[0].message.content.strip()
 
-    def consultaHorarios(self,cliente_mysql, horarios_disponibles, conversation_actual, conversation_history, fecha):
+    def consultaHorarios(self,cliente_mysql, horarios_disponibles, conversation_actual, conversation_history, fecha,cliente_nuevo,campania):
         horarios_disponibles = formatear_horarios_disponibles(horarios_disponibles)
         response = self.client.chat.completions.create(
             model="gpt-4o",
             messages=[
-                {"role": "system", "content": prompt_consulta_v4(cliente_mysql) + formatear_conversacion(conversation_actual)
+                {"role": "system", "content": prompt_consulta_v4(cliente_mysql,cliente_nuevo,campania) + formatear_conversacion(conversation_actual)
                     + f"\n Los horarios disponibles para que le digas al cliente son {horarios_disponibles}"},
             ],
             max_tokens=100,
         )
         return response.choices[0].message.content.strip()
 
-    def consultaCitareservada(self,cliente_mysql, reserva_cita, conversation_actual, conversation_history):
+    def consultaCitareservada(self,cliente_mysql, reserva_cita, conversation_actual, conversation_history,cliente_nuevo,campania):
         response = self.client.chat.completions.create(
             model="gpt-4o",
             messages=[
-                {"role": "system", "content": prompt_consulta_v4(cliente_mysql) + formatear_conversacion(conversation_actual)
+                {"role": "system", "content": prompt_consulta_v4(cliente_mysql,cliente_nuevo,campania) + formatear_conversacion(conversation_actual)
                     + "\n Dile que la cita ha sido reservada para  el ...  y mandale el link pago mencionandole que atraves de este link puede pagar usando yape, plin o tarjetas credito/debito.}"},
             ],
             max_tokens=100,
         )
         return response.choices[0].message.content.strip()
     
-    def consultaPago(self, cliente_mysql,link_pago, conversation_actual, conversation_history):
+    def consultaPago(self, cliente_mysql,link_pago, conversation_actual, conversation_history,cliente_nuevo,campania):
         response = self.client.chat.completions.create(
             model="gpt-4o",
             messages=[
-                {"role": "system", "content": prompt_consulta_v4(cliente_mysql) + formatear_conversacion(conversation_actual)
+                {"role": "system", "content": prompt_consulta_v4(cliente_mysql,cliente_nuevo,campania) + formatear_conversacion(conversation_actual)
                     },
             ],
             max_tokens=100,
