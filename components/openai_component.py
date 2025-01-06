@@ -29,7 +29,7 @@ class OpenAIManager:
                 {"role": "system", "content": prompt_intencionesv2(datetime.now(pytz.timezone("America/Lima")).strftime("%Y-%m-%d")) + conversacion_actual_formateada},
                 #{"role": "user", "content": conversacion_actual_formateada}
             ],
-            max_tokens=50,
+            max_tokens=100,
         )
         #print("Conversación actual formateada:", conversacion_actual_formateada)
         #print("Prompt intenciones:", prompt_intenciones(datetime.now(pytz.timezone("America/Lima")).strftime("%Y-%m-%d")) + conversacion_actual_formateada)
@@ -43,7 +43,7 @@ class OpenAIManager:
                 {"role": "system", "content": prompt_consulta_v4(cliente_mysql,cliente_nuevo,campania) + formatear_conversacion(conversation_actual)
                     + f"\n Los horarios disponibles para que le digas al cliente son {horarios_disponibles}"},
             ],
-            max_tokens=100,
+            max_tokens=150,
         )
         return response.choices[0].message.content.strip()
 
@@ -54,7 +54,7 @@ class OpenAIManager:
                 {"role": "system", "content": prompt_consulta_v4(cliente_mysql,cliente_nuevo,campania) + formatear_conversacion(conversation_actual)
                     + "\n Dile que la cita ha sido reservada para  el ...  y mandale el link pago mencionandole que atraves de este link puede pagar usando yape, plin o tarjetas credito/debito.}"},
             ],
-            max_tokens=100,
+            max_tokens=150,
         )
         return response.choices[0].message.content.strip()
     
@@ -65,7 +65,7 @@ class OpenAIManager:
                 {"role": "system", "content": prompt_consulta_v4(cliente_mysql,cliente_nuevo,campania) + formatear_conversacion(conversation_actual)
                     },
             ],
-            max_tokens=100,
+            max_tokens=150,
         )
         return response.choices[0].message.content.strip()
 
@@ -97,7 +97,7 @@ class OpenAIManager:
             messages=[
                 {"role": "system", "content": prompt_cliente_nombre(cliente, response_message,formatear_conversacion(conversation_actual))},
             ],
-            max_tokens=100,
+            max_tokens=150,
         )
         return response.choices[0].message.content.strip()
 
