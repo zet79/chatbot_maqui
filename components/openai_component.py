@@ -18,7 +18,7 @@ class OpenAIManager:
             max_tokens=250,
         )
         return response.choices[0].message.content.strip()
-
+    
     def clasificar_intencion(self, conversation_actual, conversation_history):
         conversacion_actual_formateada = formatear_conversacion(conversation_actual)
         #conversacion_history_formateada = formatear_historial_conversaciones(conversation_history)
