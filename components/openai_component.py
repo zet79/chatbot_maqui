@@ -52,7 +52,7 @@ class OpenAIManager:
             model="gpt-4o",
             messages=[
                 {"role": "system", "content": prompt_consulta_v4(cliente_mysql,cliente_nuevo,campania) + formatear_conversacion(conversation_actual)
-                    + "\n Dile que la cita ha sido reservada para  el ...  y mandale el link pago mencionandole que atraves de este link puede pagar usando yape, plin o tarjetas credito/debito.}"},
+                    + "\n Dile que la cita ha sido reservada para  el ...  y mandale el link pago mencionandole que atraves de este link puede pagar usando yape, plin o tarjetas credito/debito. Recuerda indicarle al cliente que dentro del link no debe ingresar nada donde dice N° Orden y en donde dice celular ingresar el numero de celular desde donde nos esta escribiendo por favor para poder asociar el pago a su cita.  }"},
             ],
             max_tokens=150,
         )
