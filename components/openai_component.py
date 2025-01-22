@@ -58,6 +58,17 @@ class OpenAIManager:
         )
         return response.choices[0].message.content.strip()
     
+    def consultaCitaDelCliente(self,cliente_mysql, cita, conversation_actual, conversation_history,cliente_nuevo,campania):
+        response = self.client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": prompt_consulta_v4(cliente_mysql,cliente_nuevo,campania) + formatear_conversacion(conversation_actual)
+                    + "\n Dile que en esta fecha y horario el cliente ya tiene una cita agendada. Responde adecuadamente. }"},
+            ],
+            max_tokens=150,
+        )
+        return response.choices[0].message.content.strip()
+    
     def consultaPago(self, cliente_mysql,link_pago, conversation_actual, conversation_history,cliente_nuevo,campania):
         response = self.client.chat.completions.create(
             model="gpt-4o",
