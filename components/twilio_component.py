@@ -22,17 +22,25 @@ class TwilioManager:
         print(f"Message status: {message_status.status}")
         return message.sid
 
-    def send_template_message(self, to_number, template_content_sid, parameters):
+    def send_template_message(self, to_number, template_content_sid, parameters=None):
+        # Si 'to_number' no viene con el prefijo 'whatsapp:', se lo agregamos
         to_number = f'whatsapp:{to_number}' if not to_number.startswith('whatsapp:') else to_number
         
-        # Configuración del mensaje usando Content SID
-        message = self.client.messages.create(
-            content_sid=template_content_sid,  # Aquí pones el Content SID de la plantilla
-            from_='whatsapp:+51944749102',  # Número de Twilio
-            #from_='whatsapp:+14155238886',
-            to=to_number,
-            content_variables=parameters  # Parámetros de la plantilla
-        )
+        # Construimos los argumentos para la creación del mensaje
+        message_kwargs = {
+            'content_sid': template_content_sid,
+            'from_': 'whatsapp:+51944749102',  # Número de Twilio
+            'to': to_number
+        }
+
+        # Si hay parámetros, los añadimos a 'content_variables'
+        if parameters:
+            message_kwargs['content_variables'] = parameters
+
+        # Enviamos el mensaje con los argumentos dinámicos
+        message = self.client.messages.create(**message_kwargs)
+
         print("message : ", message)
         print(f"Template message sent to {to_number}: {message.sid}")
+
         return message.sid
