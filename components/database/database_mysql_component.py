@@ -21,7 +21,7 @@ class DataBaseMySQLManager:
                 #database='chatbot_db',
                 #password='26deJULIO@'
                 host='chatbot-mysql.c5yiocg6aj0e.us-east-2.rds.amazonaws.com',
-                database='chatbot_db',
+                database='bot_maqui_react',
                 user='admin',
                 password='zQumSnUd9MNtjcsK'
             )
@@ -69,23 +69,23 @@ class DataBaseMySQLManager:
         cursor.execute(query, (cliente_id,))
         return cursor.fetchone()
 
-    def insertar_lead(self, cliente_id, fecha_contacto, prioridad_lead, lead_source, campaña=None, canal_lead=None, estado_lead="nuevo", notas=None):
+    def insertar_lead(self, cliente_id, fecha_contacto, prioridad_lead, lead_source, campanha=None, canal_lead=None, estado_lead="nuevo", notas=None):
         self._reconnect_if_needed()
         """Inserta un nuevo lead para un cliente en la tabla de leads."""
         cursor = self.connection.cursor()
-        query = """INSERT INTO leads (cliente_id, fecha_contacto, prioridad_lead, lead_source, campaña, canal_lead, estado_lead, notas)
+        query = """INSERT INTO leads (cliente_id, fecha_contacto, prioridad_lead, lead_source, campanha, canal_lead, estado_lead, notas)
                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"""
-        cursor.execute(query, (cliente_id, fecha_contacto, prioridad_lead, lead_source, campaña, canal_lead, estado_lead, notas))
+        cursor.execute(query, (cliente_id, fecha_contacto, prioridad_lead, lead_source, campanha, canal_lead, estado_lead, notas))
         self.connection.commit()
         return cursor.lastrowid
-    
-    def insertar_lead_zoho(self, cliente_id, fecha_contacto, prioridad_lead, lead_source, campaña=None, canal_lead=None, estado_lead="nuevo", notas=None, tipo_lead=None):
+ 
+    def insertar_lead_zoho(self, cliente_id, fecha_contacto, prioridad_lead, lead_source, campanha=None, canal_lead=None, estado_lead="nuevo", notas=None, tipo_lead=None):
         self._reconnect_if_needed()
         """Inserta un nuevo lead para un cliente en la tabla de leads."""
         cursor = self.connection.cursor()
-        query = """INSERT INTO leads (cliente_id, fecha_contacto, prioridad_lead, lead_source, campaña, canal_lead, estado_lead, notas,tipo)
+        query = """INSERT INTO leads (cliente_id, fecha_contacto, prioridad_lead, lead_source, campanha, canal_lead, estado_lead, notas,tipo)
                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s,%s)"""
-        cursor.execute(query, (cliente_id, fecha_contacto, prioridad_lead, lead_source, campaña, canal_lead, estado_lead, notas,tipo_lead))
+        cursor.execute(query, (cliente_id, fecha_contacto, prioridad_lead, lead_source, campanha, canal_lead, estado_lead, notas,tipo_lead))
         self.connection.commit()
         return cursor.lastrowid
 
@@ -318,6 +318,7 @@ class DataBaseMySQLManager:
         self.connection.commit()
         cursor.close()
 
+
     def actualizar_estado_historico_cliente(self, cliente_id, nuevo_estado):
         self._reconnect_if_needed()
         cursor = self.connection.cursor()
@@ -448,22 +449,22 @@ class DataBaseMySQLManager:
     
     def asociar_cliente_a_campana_mas_reciente(self, cliente_id):
         """
-        Asocia un cliente a la campaña más reciente que esté activa y devuelve los detalles de la campaña.
+        Asocia un cliente a la campanha más reciente que esté activa y devuelve los detalles de la campanha.
 
         Args:
             cliente_id (int): ID del cliente a asociar.
 
         Returns:
-            dict: Detalles de la campaña asociada o None si no hay campañas activas.
+            dict: Detalles de la campanha asociada o None si no hay campanhas activas.
         """
         self._reconnect_if_needed()
         cursor = self.connection.cursor(dictionary=True)
 
         try:
-            # Obtener la campaña activa más reciente
+            # Obtener la campanha activa más reciente
             query_campana = """
-                SELECT * FROM campañas
-                WHERE estado_campaña = 'activa' AND tipo = 'in'
+                SELECT * FROM campanhas
+                WHERE estado_campanha = 'activa' AND tipo = 'in'
                 ORDER BY fecha_creacion DESC
                 LIMIT 1
             """
@@ -471,44 +472,44 @@ class DataBaseMySQLManager:
             campana = cursor.fetchone()
 
             if not campana:
-                print("No hay campañas activas disponibles.")
+                print("No hay campanhas activas disponibles.")
                 return None
 
-            campana_id = campana['campaña_id']
+            campana_id = campana['campanha_id']
 
             # Verificar si ya existe la asociación
             query_check = """
-                SELECT * FROM cliente_campaña
-                WHERE cliente_id = %s AND campaña_id = %s
+                SELECT * FROM cliente_campanha
+                WHERE cliente_id = %s AND campanha_id = %s
             """
             cursor.execute(query_check, (cliente_id, campana_id))
             existe_asociacion = cursor.fetchone()
 
             if existe_asociacion:
-                print("El cliente ya está asociado a la campaña más reciente.")
+                print("El cliente ya está asociado a la campanha más reciente.")
             else:
                 # Insertar la asociación en la tabla intermedia
                 query_insert = """
-                    INSERT INTO cliente_campaña (cliente_id, campaña_id)
+                    INSERT INTO cliente_campanha (cliente_id, campanha_id)
                     VALUES (%s, %s)
                 """
                 cursor.execute(query_insert, (cliente_id, campana_id))
 
-                # Incrementar el num_clientes de la campaña
+                # Incrementar el num_clientes de la campanha
                 query_update_num_clientes = """
-                    UPDATE campañas
+                    UPDATE campanhas
                     SET num_clientes = num_clientes + 1
-                    WHERE campaña_id = %s
+                    WHERE campanha_id = %s
                 """
                 cursor.execute(query_update_num_clientes, (campana_id,))
 
                 self.connection.commit()
-                print(f"Cliente {cliente_id} asociado a la campaña {campana_id} y num_clientes incrementado.")
+                print(f"Cliente {cliente_id} asociado a la campanha {campana_id} y num_clientes incrementado.")
 
             return campana
 
         except Exception as e:
-            print(f"Error al asociar cliente a la campaña: {e}")
+            print(f"Error al asociar cliente a la campanha: {e}")
             return None
 
         finally:

@@ -11,7 +11,7 @@ class DataBaseMongoDBManager:
         #uri = 'mongodb://localhost:27017/'
         uri = "mongodb+srv://admin:zQumSnUd9MNtjcsK@cluster0.mw4xl.mongodb.net/?retryWrites=true&w=majority"
         client = MongoClient(uri)
-        return client.chatbot_db
+        return client["chatbot_maqui_reactivaciones"]
 
     def _reconnect_if_needed(self):
         """Reconecta si la conexión actual no está activa."""

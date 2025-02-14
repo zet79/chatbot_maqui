@@ -9,7 +9,7 @@ class OpenAIManager:
     def __init__(self):
         self.client = OpenAI(api_key=openai_api_key)
 
-    def consulta(self, cliente,conversation_actual, conversation_history,cliente_nuevo,campania):
+    def consulta(self, cliente,conversation_actual,cliente_nuevo,campania):
         response = self.client.chat.completions.create(
             model="gpt-4o",
             messages=[
@@ -19,7 +19,7 @@ class OpenAIManager:
         )
         return response.choices[0].message.content.strip()
     
-    def clasificar_intencion(self, conversation_actual, conversation_history):
+    def clasificar_intencion(self, conversation_actual):
         conversacion_actual_formateada = formatear_conversacion(conversation_actual)
         #conversacion_history_formateada = formatear_historial_conversaciones(conversation_history)
         print("Fecha actual",datetime.now(pytz.timezone("America/Lima")).strftime("%Y-%m-%d"))
@@ -35,7 +35,7 @@ class OpenAIManager:
         #print("Prompt intenciones:", prompt_intenciones(datetime.now(pytz.timezone("America/Lima")).strftime("%Y-%m-%d")) + conversacion_actual_formateada)
         return response.choices[0].message.content.strip()
 
-    def consultaHorarios(self,cliente_mysql, horarios_disponibles, conversation_actual, conversation_history, fecha,cliente_nuevo,campania):
+    def consultaHorarios(self,cliente_mysql, horarios_disponibles, conversation_actual, fecha,cliente_nuevo,campania):
         horarios_disponibles = formatear_horarios_disponibles(horarios_disponibles)
         response = self.client.chat.completions.create(
             model="gpt-4o",
@@ -47,7 +47,7 @@ class OpenAIManager:
         )
         return response.choices[0].message.content.strip()
 
-    def consultaCitareservada(self,cliente_mysql, reserva_cita, conversation_actual, conversation_history,cliente_nuevo,campania):
+    def consultaCitareservada(self,cliente_mysql, reserva_cita, conversation_actual,cliente_nuevo,campania):
         response = self.client.chat.completions.create(
             model="gpt-4o",
             messages=[
@@ -58,7 +58,7 @@ class OpenAIManager:
         )
         return response.choices[0].message.content.strip()
     
-    def consultaCitaDelCliente(self,cliente_mysql, cita, conversation_actual, conversation_history,cliente_nuevo,campania):
+    def consultaCitaDelCliente(self,cliente_mysql, cita, conversation_actual,cliente_nuevo,campania):
         response = self.client.chat.completions.create(
             model="gpt-4o",
             messages=[
@@ -69,7 +69,7 @@ class OpenAIManager:
         )
         return response.choices[0].message.content.strip()
     
-    def consultaPago(self, cliente_mysql,link_pago, conversation_actual, conversation_history,cliente_nuevo,campania):
+    def consultaPago(self, cliente_mysql,link_pago, conversation_actual,cliente_nuevo,campania):
         response = self.client.chat.completions.create(
             model="gpt-4o",
             messages=[

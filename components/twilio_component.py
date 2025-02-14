@@ -13,7 +13,7 @@ class TwilioManager:
 
         message = self.client.messages.create(
             body=message_body,
-            from_='whatsapp:+51944749102',  # Cambia por tu número de Twilio
+            from_='whatsapp:+51932267592',  # Cambia por tu número de Twilio
             #from_='whatsapp:+14155238886',  # Cambia por tu número de Twilio
             to=to_number
         )
@@ -29,7 +29,7 @@ class TwilioManager:
         # Construimos los argumentos para la creación del mensaje
         message_kwargs = {
             'content_sid': template_content_sid,
-            'from_': 'whatsapp:+51944749102',  # Número de Twilio
+            'from_': 'whatsapp:+51932267592',  # Número de Twilio
             'to': to_number
         }
 

@@ -14,8 +14,6 @@ from components.openai_component import OpenAIManager
 from components.calendar_component import GoogleCalendarManager
 from components.database_mongodb_component import DataBaseMongoDBManager
 from components.database_mysql_component import DataBaseMySQLManager
-from components.leader_csv_component import LeadManager
-from components.zoho_component import ZohoCRMManager
 from helpers.helpers import format_number, extraer_json,json_a_lista
 from api_keys.api_keys import client_id_zoho, client_secret_zoho, refresh_token_zoho
 from celery_app import celery
@@ -30,8 +28,6 @@ openai = OpenAIManager()
 calendar = GoogleCalendarManager()
 dbMongoManager = DataBaseMongoDBManager()
 dbMySQLManager = DataBaseMySQLManager()
-leaderManager = LeadManager("leads/Leads_Prueba.csv")
-zoho_manager = ZohoCRMManager(client_id_zoho, client_secret_zoho, 'http://localhost', refresh_token_zoho)
 #culqi = CulqiManager()
 
 def get_scheduled_task_id(celular):
@@ -68,42 +64,27 @@ def enviar_respuesta(celular, cliente_nuevo, profileName):
     dbMongoManager = DataBaseMongoDBManager()
     dbMySQLManager = DataBaseMySQLManager()
 
-    # Recuperar el cliente desde la base de datos dentro de la tarea
     cliente = dbMongoManager.obtener_cliente_por_celular(celular)
     if not cliente:
-        # Maneja el caso donde el cliente no existe
+        # Algo pasa si no tiene en mongo su 
         return
 
     # Obtener o crear cliente en MySQL
-    cliente_id_mysql = dbMySQLManager.insertar_cliente(
-        documento_identidad=None,
-        tipo_documento=None,
-        nombre=cliente["nombre"],
-        apellido="",
-        celular=cliente["celular"],
-        email= cliente.get("email", None) or None
-    )    
+    cliente_id_mysql = dbMySQLManager.obtener_id_cliente_por_celular(celular)
+    if cliente_id_mysql==0:
+        #EL cliente no existe
+        return 
 
+    
     # Obtener cliente por id
     cliente_mysql = dbMySQLManager.obtener_cliente(cliente_id_mysql)
     if cliente_mysql["nombre"] == "":
         cliente_mysql["nombre"] = profileName
         dbMySQLManager.actualizar_nombre_cliente(cliente_id_mysql, profileName)
     estado_actual = cliente_mysql['estado']
-    cliente_nuevo = estado_actual=="nuevo"
-    cliente_nuevo_seguimiento = estado_actual == "nuevo"
-    campania = ""
-    if cliente_nuevo:
-        # asociarlo a la nueva campaña
-        cliente_mysql["bound"] = True
-        cliente_mysql["estado"] = 'seguimiento'
-        dbMySQLManager.marcar_bound(cliente_id_mysql,True)
-        dbMySQLManager.actualizar_estado_cliente(cliente_id_mysql, 'seguimiento')
-        dbMySQLManager.actualizar_estado_historico_cliente(cliente_id_mysql, 'seguimiento')
-        campania_registro = dbMySQLManager.asociar_cliente_a_campana_mas_reciente(cliente_id_mysql) # lo asocia a la campania mas reciente que este activa
-        campania = campania_registro["descripcion"] if campania_registro != None else ""  
+    campanha_registro =dbMySQLManager.asociar_cliente_a_campana_mas_reciente(cliente_id_mysql)
+    campanha = campanha_registro["descripcion"] if campanha_registro != None else ""  
 
-    cliente_nuevo = cliente_mysql["bound"]
     dbMySQLManager.actualizar_fecha_ultima_interaccion(cliente_id_mysql, datetime.now())
     # Verificar si existe una conversación activa en MySQL para el cliente
     conversacion_mysql = dbMySQLManager.obtener_conversacion_activa(cliente_id_mysql)
@@ -124,7 +105,7 @@ def enviar_respuesta(celular, cliente_nuevo, profileName):
     conversation_actual = dbMongoManager.obtener_conversacion_actual(cliente["celular"])
 
     # Obtener el historial de conversaciones del cliente en caso tenga
-    conversation_history = dbMongoManager.obtener_historial_conversaciones(cliente["celular"])
+    # = dbMongoManager.obtener_historial_conversaciones(cliente["celular"]) esto no va
 
     print("Conversación actual:", conversation_actual)
     # Hacemos un mapeo de intenciones para determinar si el chatbot necesita algo específico
@@ -135,7 +116,7 @@ def enviar_respuesta(celular, cliente_nuevo, profileName):
 
     while intento_actual < max_intentos:
         try:
-            intencion = openai.clasificar_intencion(conversation_actual, conversation_history)
+            intencion = openai.clasificar_intencion(conversation_actual)
             print("Intención detectada antes extraer json:", intencion)
             intencion = extraer_json(intencion)
             if intencion is not None:
@@ -146,20 +127,19 @@ def enviar_respuesta(celular, cliente_nuevo, profileName):
                 intencion_list = json_a_lista(intencion)
                 print("Intencion lista: ", intencion_list)
                 if intencion_list[0] == 1:
-                    print("Ingreso a la intencion 1")                  
-                    nuevo_estado = 'interesado'
-                    if es_transicion_valida(estado_actual, nuevo_estado) and not cliente_nuevo_seguimiento:                           
-                        cliente_mysql["estado"] = 'interesado'
+                    response_message = openai.consulta(cliente_mysql,conversation_actual,cliente_nuevo,campanha)
+                    
+                    if es_transicion_valida(estado_actual, nuevo_estado):                           
+                        cliente_mysql["estado"] = nuevo_estado
                         dbMySQLManager.actualizar_estado_cliente(cliente_id_mysql, nuevo_estado)
                         dbMySQLManager.actualizar_estado_historico_cliente(cliente_id_mysql, nuevo_estado)
                     else:
                         print(f"No se actualiza el estado desde {estado_actual} a {nuevo_estado}.")
-                    response_message = openai.consulta(cliente_mysql,conversation_actual, conversation_history,cliente_nuevo,campania)
                 elif intencion_list[0] == 2:
                     if len(intencion_list) > 1:
                         print("Ingreso a la intencion 2")
                         nuevo_estado = 'interesado'
-                        if es_transicion_valida(estado_actual, nuevo_estado) and not cliente_nuevo_seguimiento:
+                        if es_transicion_valida(estado_actual, nuevo_estado):
                             cliente_mysql["estado"] = 'interesado'
                             dbMySQLManager.actualizar_estado_cliente(cliente_id_mysql, nuevo_estado)  
                             dbMySQLManager.actualizar_estado_historico_cliente(cliente_id_mysql, nuevo_estado)      
@@ -167,7 +147,7 @@ def enviar_respuesta(celular, cliente_nuevo, profileName):
                         try:
                             horarios_disponibles = calendar.listar_horarios_disponibles(intencion_list[1].strip())
                             print("Horarios disponibles:", horarios_disponibles)
-                            response_message = openai.consultaHorarios(cliente_mysql,horarios_disponibles,conversation_actual,conversation_history,intencion_list[1],cliente_nuevo,campania)
+                            response_message = openai.consultaHorarios(cliente_mysql,horarios_disponibles,conversation_actual,intencion_list[1],cliente_nuevo,campanha)
                         except Exception as e:
                             print("Error al obtener horarios disponibles:", e)
                             horarios_disponibles = []
@@ -189,7 +169,7 @@ def enviar_respuesta(celular, cliente_nuevo, profileName):
                         cita_cliente = dbMySQLManager.buscar_cita_por_fecha_cliente(cliente_id_mysql, intencion_list[1].lstrip())
                         if cita_cliente:
                             print("Cita encontrada:", cita_cliente)
-                            response_message = openai.consultaCitaDelCliente(cliente_mysql,cita_cliente,conversation_actual, conversation_history,cliente_nuevo,campania)
+                            response_message = openai.consultaCitaDelCliente(cliente_mysql,cita_cliente,conversation_actual,cliente_nuevo,campanha)
                         else:
                             response_message = f"""{{"mensaje": "Lo siento, el horario seleccionado no está disponible. Por favor, selecciona otro horario."}}"""
                     else:
@@ -202,7 +182,7 @@ def enviar_respuesta(celular, cliente_nuevo, profileName):
                             print(f"No se actualiza el estado desde {estado_actual} a {nuevo_estado}.")
 
                         print("Cita reservada:", reserva_cita)
-                        response_message = openai.consultaCitareservada(cliente_mysql,reserva_cita,conversation_actual, conversation_history,cliente_nuevo,campania)
+                        response_message = openai.consultaCitareservada(cliente_mysql,reserva_cita,conversation_actual,cliente_nuevo,campanha)
                 
                         fecha_cita = datetime.fromisoformat(reserva_cita["start"]["dateTime"]).strftime('%Y-%m-%d %H:%M:%S')
                         # Registrar la cita en MySQL y vincularla con la conversación activa
@@ -213,67 +193,6 @@ def enviar_respuesta(celular, cliente_nuevo, profileName):
                             estado_cita="agendada",
                             conversacion_id=conversacion_id_mysql
                         )        
-
-                elif intencion_list[0] == 4:
-                    print("Ingreso a la intencion 4")
-                    # genero link de pago con culqui
-                    link_pago = "https://express.culqi.com/pago/HXHKR025JY"
-                    
-                    nuevo_estado = 'promesas de pago'   
-                    if es_transicion_valida(estado_actual, nuevo_estado):
-                        cliente_mysql["estado"] = 'promesas de pago'
-                        dbMySQLManager.actualizar_estado_cliente(cliente_id_mysql, nuevo_estado)
-                        dbMySQLManager.actualizar_estado_historico_cliente(cliente_id_mysql, nuevo_estado)
-                    else:
-                        print(f"No se actualiza el estado desde {estado_actual} a {nuevo_estado}.")
-                    response_message = openai.consultaPago(cliente_mysql,link_pago, conversation_actual, conversation_history,cliente_nuevo,campania)
-
-                elif intencion_list[0] == 5:
-                    if intencion_list[1] == "":
-                        raise Exception("Falta información del nombre en la intención 5")
-                    print("Ingreso a la intencion 5")
-                    cliente["nombre"] = intencion_list[1].strip()
-                    cliente_mysql["nombre"] = intencion_list[1].strip()
-                    dbMongoManager.editar_cliente_por_celular(cliente["celular"], cliente["nombre"])
-                    dbMySQLManager.actualizar_nombre_cliente(cliente_id_mysql, cliente["nombre"])
-                    #dbMySQLManager.
-                    response_message = openai.consulta(cliente_mysql,conversation_actual, conversation_history,cliente_nuevo,campania)
-                elif intencion_list[0] == 6:
-                    if len(intencion_list) > 2:
-                        categoria = intencion_list[1].strip()
-                        detalle = intencion_list[2].strip()
-                        print("Causa de no interés:", categoria)
-                        if es_transicion_valida(estado_actual, 'no interesado'):
-                            cliente_mysql["estado"] = 'no interesado'
-                            dbMySQLManager.actualizar_estado_cliente_no_interes(cliente_id_mysql, 'no interesado', categoria, detalle)
-                            dbMySQLManager.actualizar_estado_historico_cliente(cliente_id_mysql, 'no interesado')
-                        else:
-                            print(f"No se actualiza el estado desde {estado_actual} a no interesado.")
-                        response_message = openai.consulta(cliente_mysql, conversation_actual, conversation_history,cliente_nuevo,campania)
-                    else:
-                        raise Exception("Falta información en la intención 6")
-                
-                else:
-                    raise Exception("Intención no reconocida")
-
-                # Enviar respuesta al cliente
-                #if cliente["nombre"] == "":
-                #    response_message = openai.consultaNombre(cliente, response_message,conversation_actual)
-
-                print("Response message:", response_message)
-                response_message = extraer_json(response_message)
-                print("Response message json:", response_message)
-                response_message = response_message["mensaje"]
-                response_message = response_message.replace("Asesor: ", "").strip('"')
-                twilio.send_message(cliente["celular"], response_message)
-
-                # Guardar la respuesta en la conversación actual
-                print("Response message:", response_message)
-                dbMongoManager.guardar_respuesta_ultima_interaccion_chatbot(cliente["celular"], response_message)
-                dbMySQLManager.actualizar_fecha_ultima_interaccion_bot(cliente_id_mysql, datetime.now())
-                clear_scheduled_task_id(celular)
-                print(f"Terminó la tarea para {celular}, limpiando task_id en Redis.")
-                break
             else:
                 response_message = "Lo siento, no pude entender tu mensaje. Por favor, intenta de nuevo."
                 twilio.send_message(cliente["celular"], response_message)
