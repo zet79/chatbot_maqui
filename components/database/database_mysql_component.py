@@ -36,7 +36,7 @@ class DataBaseMySQLManager:
         self._reconnect_if_needed()
         """Obtiene el cliente_id usando el número de celular."""
         cursor = self.connection.cursor()
-        query = "SELECT cliente_id FROM clientes WHERE celular = %s"
+        query = "SELECT cliente_id FROM cliente WHERE celular = %s"
         cursor.execute(query, (celular,))
         result = cursor.fetchone()
         return result[0] if result else None
@@ -46,7 +46,8 @@ class DataBaseMySQLManager:
         """Verifica si un cliente ya existe en la base de datos usando el número de celular."""
         return self.obtener_id_cliente_por_celular(celular) is not None
 
-    def insertar_cliente(self, documento_identidad, tipo_documento, nombre, apellido, celular, email,estado="nuevo"):
+    def insertar_cliente(self, documento_identidad, tipo_documento,
+                         nombre, apellido, celular, email,estado="en seguimiento"):
         self._reconnect_if_needed()
         """Inserta un nuevo cliente en la tabla de clientes si no existe ya."""
         if not self.existe_cliente_por_celular(celular):
@@ -69,6 +70,7 @@ class DataBaseMySQLManager:
         cursor.execute(query, (cliente_id,))
         return cursor.fetchone()
 
+    ''' 
     def insertar_lead(self, cliente_id, fecha_contacto, prioridad_lead, lead_source, campanha=None, canal_lead=None, estado_lead="nuevo", notas=None):
         self._reconnect_if_needed()
         """Inserta un nuevo lead para un cliente en la tabla de leads."""
@@ -78,7 +80,9 @@ class DataBaseMySQLManager:
         cursor.execute(query, (cliente_id, fecha_contacto, prioridad_lead, lead_source, campanha, canal_lead, estado_lead, notas))
         self.connection.commit()
         return cursor.lastrowid
- 
+    '''
+
+    '''
     def insertar_lead_zoho(self, cliente_id, fecha_contacto, prioridad_lead, lead_source, campanha=None, canal_lead=None, estado_lead="nuevo", notas=None, tipo_lead=None):
         self._reconnect_if_needed()
         """Inserta un nuevo lead para un cliente en la tabla de leads."""
@@ -88,7 +92,9 @@ class DataBaseMySQLManager:
         cursor.execute(query, (cliente_id, fecha_contacto, prioridad_lead, lead_source, campanha, canal_lead, estado_lead, notas,tipo_lead))
         self.connection.commit()
         return cursor.lastrowid
+    '''
 
+    '''
     def obtener_leads_cliente(self, cliente_id):
         self._reconnect_if_needed()
         """Obtiene todos los leads de un cliente."""
@@ -96,14 +102,16 @@ class DataBaseMySQLManager:
         query = "SELECT * FROM leads WHERE cliente_id = %s"
         cursor.execute(query, (cliente_id,))
         return cursor.fetchall()
+    '''
 
-    def insertar_cita(self, cliente_id, fecha_cita, motivo, estado_cita="agendada", conversacion_id=None):
+
+    def insertar_cita(self, cliente_id, fecha_cita, estado_cita="agendada", conversacion_id=None):
         self._reconnect_if_needed()
         """Inserta una nueva cita para un cliente en la tabla de citas."""
         cursor = self.connection.cursor()
-        query = """INSERT INTO citas (cliente_id, fecha_cita, motivo, estado_cita, conversacion_id)
-                   VALUES (%s, %s, %s, %s, %s)"""
-        cursor.execute(query, (cliente_id, fecha_cita, motivo, estado_cita, conversacion_id))
+        query = """INSERT INTO cita (cliente_id, fecha_cita, estado_cita, conversacion_id)
+                   VALUES (%s, %s, %s, %s)"""
+        cursor.execute(query, (cliente_id, fecha_cita, estado_cita, conversacion_id))
         self.connection.commit()
         return cursor.lastrowid
 
@@ -111,7 +119,7 @@ class DataBaseMySQLManager:
         self._reconnect_if_needed()
         """Obtiene todas las citas de un cliente."""
         cursor = self.connection.cursor(dictionary=True)
-        query = "SELECT * FROM citas WHERE cliente_id = %s"
+        query = "SELECT * FROM cita WHERE cliente_id = %s"
         cursor.execute(query, (cliente_id,))
         return cursor.fetchall()
     
@@ -119,7 +127,7 @@ class DataBaseMySQLManager:
         self._reconnect_if_needed()
         """Obtiene todas las citas en un estado específico."""
         cursor = self.connection.cursor(dictionary=True)
-        query = "SELECT * FROM citas WHERE estado_cita = %s"
+        query = "SELECT * FROM cita WHERE estado_cita = %s"
         cursor.execute(query, (estado_cita,))
         return cursor.fetchall()
     
@@ -130,36 +138,41 @@ class DataBaseMySQLManager:
         query = """        
             SELECT c.cita_id, c.fecha_cita, c.estado_cita, c.motivo, c.fecha_creacion, c.aviso, 
                cl.cliente_id, cl.nombre, cl.apellido, cl.celular
-            FROM citas c
-            JOIN clientes cl ON c.cliente_id = cl.cliente_id
+            FROM cita c
+            JOIN cliente cl ON c.cliente_id = cl.cliente_id
             WHERE c.estado_cita = %s
             """
         cursor.execute(query, (estado_cita,))
         return cursor.fetchall()
 
+    '''
     def insertar_pago(self, cliente_id, cita_id, fecha_pago, monto, metodo_pago, estado_pago="pendiente"):
         self._reconnect_if_needed()
         """Inserta un nuevo pago para un cliente en la tabla de pagos."""
         cursor = self.connection.cursor()
-        query = """INSERT INTO pagos (cliente_id, cita_id, fecha_pago, monto, metodo_pago, estado_pago)
+        query = """INSERT INTO pago (cliente_id, cita_id, fecha_pago, monto, metodo_pago, estado_pago)
                    VALUES (%s, %s, %s, %s, %s, %s)"""
         cursor.execute(query, (cliente_id, cita_id, fecha_pago, monto, metodo_pago, estado_pago))
         self.connection.commit()
         return cursor.lastrowid
+    '''
 
+    '''
     def obtener_pagos_cliente(self, cliente_id):
         self._reconnect_if_needed()
         """Obtiene todos los pagos de un cliente."""
         cursor = self.connection.cursor(dictionary=True)
-        query = "SELECT * FROM pagos WHERE cliente_id = %s"
+        query = "SELECT * FROM pago WHERE cliente_id = %s"
         cursor.execute(query, (cliente_id,))
         return cursor.fetchall()
+    '''
+
 
     def insertar_conversacion(self, cliente_id, mensaje, tipo_conversacion, resultado=None, estado_conversacion="activa"):
         self._reconnect_if_needed()
         """Inserta una nueva conversación para un cliente en la tabla de conversaciones."""
         cursor = self.connection.cursor()
-        query = """INSERT INTO conversaciones (cliente_id, mensaje, tipo_conversacion, resultado, estado_conversacion, fecha_conversacion)
+        query = """INSERT INTO conversacion (cliente_id, mensaje, tipo_conversacion, resultado, estado_conversacion, fecha_conversacion)
                    VALUES (%s, %s, %s, %s, %s, %s)"""
         cursor.execute(query, (cliente_id, mensaje, tipo_conversacion, resultado, estado_conversacion, datetime.now()))
         self.connection.commit()
@@ -170,10 +183,10 @@ class DataBaseMySQLManager:
         """Obtiene todas las conversaciones de un cliente, filtrando opcionalmente por estado."""
         cursor = self.connection.cursor(dictionary=True)
         if estado_conversacion:
-            query = "SELECT * FROM conversaciones WHERE cliente_id = %s AND estado_conversacion = %s"
+            query = "SELECT * FROM conversacion WHERE cliente_id = %s AND estado_conversacion = %s"
             cursor.execute(query, (cliente_id, estado_conversacion))
         else:
-            query = "SELECT * FROM conversaciones WHERE cliente_id = %s"
+            query = "SELECT * FROM conversacion WHERE cliente_id = %s"
             cursor.execute(query, (cliente_id,))
         return cursor.fetchall()
 
@@ -181,7 +194,7 @@ class DataBaseMySQLManager:
         self._reconnect_if_needed()
         """Actualiza el estado de una conversación a 'completada' o 'activa'."""
         cursor = self.connection.cursor()
-        query = "UPDATE conversaciones SET estado_conversacion = %s WHERE conversacion_id = %s"
+        query = "UPDATE conversacion SET estado_conversacion = %s WHERE conversacion_id = %s"
         cursor.execute(query, (nuevo_estado, conversacion_id))
         self.connection.commit()
 
@@ -189,10 +202,12 @@ class DataBaseMySQLManager:
         self._reconnect_if_needed()
         """Obtiene la conversación activa actual de un cliente, si existe."""
         cursor = self.connection.cursor(dictionary=True)
-        query = "SELECT * FROM conversaciones WHERE cliente_id = %s AND estado_conversacion = 'activa'"
+        query = "SELECT * FROM conversacion WHERE cliente_id = %s AND estado_conversacion = 'activa'"
         cursor.execute(query, (cliente_id,))
         return cursor.fetchone()
 
+
+    '''
     def actualizar_estado_lead(self, lead_id, nuevo_estado):
         self._reconnect_if_needed()
         """Actualiza el estado de un lead en la tabla de leads."""
@@ -200,33 +215,39 @@ class DataBaseMySQLManager:
         query = "UPDATE leads SET estado_lead = %s WHERE lead_id = %s"
         cursor.execute(query, (nuevo_estado, lead_id))
         self.connection.commit()
-        print(f"Estado del lead {lead_id} actualizado a '{nuevo_estado}'.")
+        print(f"Estado del lead {lead_id} actualizado a '{nuevo_estado}'.")    
+    '''
+
 
     def actualizar_estado_cliente(self, client_id, nuevo_estado):
         self._reconnect_if_needed()
         cursor = self.connection.cursor()
-        query = "UPDATE clientes SET estado = %s WHERE cliente_id = %s"
+        query = "UPDATE cliente SET estado = %s WHERE cliente_id = %s"
         cursor.execute(query,(nuevo_estado,client_id))
         self.connection.commit()
         print(f"Estado del cliente {client_id} actualizado a {nuevo_estado}.")
-       
-    def actualizar_estado_cliente_no_interes(self, client_id, nuevo_estado,categoria_no_interes,detalle_no_interes):
+    
+
+    '''
+        def actualizar_estado_cliente_no_interes(self, client_id, nuevo_estado,categoria_no_interes,detalle_no_interes):
         self._reconnect_if_needed()
         cursor = self.connection.cursor()
         query = "UPDATE clientes SET estado = %s, categoria_no_interes = %s, detalle_no_interes = %s WHERE cliente_id = %s"
         cursor.execute(query,(nuevo_estado,categoria_no_interes,detalle_no_interes,client_id))
         self.connection.commit()
-        print(f"Estado del cliente {client_id} actualizado a {nuevo_estado}.")        
+        print(f"Estado del cliente {client_id} actualizado a {nuevo_estado}.")  
+    '''
+      
     
     def actualizar_fecha_ultima_interaccion(self, cliente_id, fecha):
         self._reconnect_if_needed()
         cursor = self.connection.cursor()
-        sql = "UPDATE clientes SET fecha_ultima_interaccion = %s WHERE cliente_id = %s"
+        sql = "UPDATE cliente SET fecha_ultima_interaccion = %s WHERE cliente_id = %s"
         cursor.execute(sql, (fecha, cliente_id))
 
         # Actualiza la fecha en la conversación activa
         sql_conversacion = """
-            UPDATE conversaciones 
+            UPDATE conversacion 
             SET fecha_ultima_interaccion = %s 
             WHERE cliente_id = %s AND estado_conversacion = 'activa'
         """
@@ -238,12 +259,12 @@ class DataBaseMySQLManager:
     def actualizar_fecha_ultima_interaccion_bot(self, cliente_id, fecha):
         self._reconnect_if_needed()
         cursor = self.connection.cursor()
-        sql = "UPDATE clientes SET fecha_ultima_interaccion_bot = %s WHERE cliente_id = %s"
+        sql = "UPDATE cliente SET fecha_ultima_interaccion_bot = %s WHERE cliente_id = %s"
         cursor.execute(sql, (fecha, cliente_id))
         
         # Actualiza la fecha en la conversación activa
         sql_conversacion = """
-            UPDATE conversaciones 
+            UPDATE conversacion 
             SET fecha_ultima_interaccion = %s 
             WHERE cliente_id = %s AND estado_conversacion = 'activa'
         """
@@ -252,32 +273,34 @@ class DataBaseMySQLManager:
         self.connection.commit()
         cursor.close()
 
-    
+    '''
     def obtener_citas_pendientes(self):
         self._reconnect_if_needed()
         cursor = self.connection.cursor(dictionary=True)
         sql = """
-            SELECT c.*, p.estado_pago FROM citas c
-            LEFT JOIN pagos p ON c.cita_id = p.cita_id
+            SELECT c.*, p.estado_pago FROM cita c
+            LEFT JOIN pago p ON c.cita_id = p.cita_id
             WHERE c.estado_cita = 'agendada' AND (p.estado_pago IS NULL OR p.estado_pago != 'completado')
         """
         cursor.execute(sql)
         citas = cursor.fetchall()
         cursor.close()
         return citas
-    
+    '''
     def obtener_todos_los_clientes(self):
         self._reconnect_if_needed()
         """Obtiene los datos de un cliente por su ID."""
         cursor = self.connection.cursor(dictionary=True)
-        query = "SELECT * FROM clientes"
+        query = "SELECT * FROM cliente"
         cursor.execute(query)
         return cursor.fetchall()
+    
+
     def obtener_citas_pasadas(self, fecha_actual):
         self._reconnect_if_needed()
         cursor = self.connection.cursor(dictionary=True)
         sql = """
-            SELECT * FROM citas
+            SELECT * FROM cita
             WHERE estado_cita = 'agendada' AND fecha_cita <= %s
         """
         cursor.execute(sql, (fecha_actual,))
@@ -285,26 +308,31 @@ class DataBaseMySQLManager:
         cursor.close()
         return citas
     
+
     def actualizar_estado_cita(self, cita_id, nuevo_estado):
         self._reconnect_if_needed()
         cursor = self.connection.cursor()
-        sql = "UPDATE citas SET estado_cita = %s WHERE cita_id = %s"
+        sql = "UPDATE cita SET estado_cita = %s WHERE cita_id = %s"
         cursor.execute(sql, (nuevo_estado, cita_id))
         self.connection.commit()
         cursor.close()
     
+
+    '''
     def actualizar_aviso_cita(self, cita_id, aviso):
         self._reconnect_if_needed()
         cursor = self.connection.cursor()
-        sql = "UPDATE citas SET aviso = %s WHERE cita_id = %s"
+        sql = "UPDATE cita SET aviso = %s WHERE cita_id = %s"
         cursor.execute(sql, (aviso, cita_id))
         self.connection.commit()
         cursor.close()
+    '''
+
 
     def obtener_estado_cliente(self, cliente_id):
         self._reconnect_if_needed()
         cursor = self.connection.cursor()
-        sql = "SELECT estado FROM clientes WHERE cliente_id = %s"
+        sql = "SELECT estado FROM cliente WHERE cliente_id = %s"
         cursor.execute(sql, (cliente_id,))
         estado = cursor.fetchone()[0]
         cursor.close()
@@ -313,35 +341,62 @@ class DataBaseMySQLManager:
     def actualizar_nombre_cliente(self, cliente_id, nombre):
         self._reconnect_if_needed()
         cursor = self.connection.cursor()
-        sql = "UPDATE clientes SET nombre = %s WHERE cliente_id = %s"
+        sql = "UPDATE cliente SET nombre = %s WHERE cliente_id = %s"
         cursor.execute(sql, (nombre, cliente_id))
         self.connection.commit()
         cursor.close()
 
 
-    def actualizar_estado_historico_cliente(self, cliente_id, nuevo_estado):
+    def insertar_estado_historico_cliente(self, cliente_id, nuevo_estado, detalle):
         self._reconnect_if_needed()
         cursor = self.connection.cursor()
 
-        # Verificar si ya existe un registro en el histórico con el mismo estado para el cliente
-        query_check = "SELECT historico_id FROM historico WHERE cliente_id = %s AND estado = %s"
-        cursor.execute(query_check, (cliente_id, nuevo_estado))
+        # Verificar si ya existe un registro en el histórico para el cliente, obteniendo el último estado
+        query_state = """
+            SELECT estado
+            FROM historico_estado 
+            WHERE cliente_id = %s
+            ORDER BY fecha_estado DESC 
+            LIMIT 1
+        """
+        cursor.execute(query_state, (cliente_id,))
         result = cursor.fetchone()
 
-        if result:
-            # Si existe, actualizar la fecha_estado a la fecha y hora actual
-            query_update = "UPDATE historico SET fecha_estado = %s WHERE historico_id = %s"
-            cursor.execute(query_update, (datetime.now(), result[0]))
-            print(f"Fecha actualizada en el histórico para el estado '{nuevo_estado}' del cliente {cliente_id}.")
-        else:
-            # Si no existe, insertar un nuevo registro en el histórico
-            query_insert = "INSERT INTO historico (cliente_id, estado, fecha_estado) VALUES (%s, %s, %s)"
-            cursor.execute(query_insert, (cliente_id, nuevo_estado, datetime.now()))
+        # Si no hay registro previo o el último estado es diferente al nuevo, insertar el nuevo estado
+        if result is None or result[0] != nuevo_estado:
+            query_insert = "INSERT INTO historico_estado (cliente_id, estado, fecha_estado, detalle) VALUES (%s, %s, %s, %s)"
+            cursor.execute(query_insert, (cliente_id, nuevo_estado, datetime.now(), detalle))
             print(f"Estado '{nuevo_estado}' añadido al histórico para el cliente {cliente_id}.")
 
         self.connection.commit()
         cursor.close()
 
+    def insertar_motivo_historico_cliente(self, cliente_id, nuevo_motivo, detalle):
+        self._reconnect_if_needed()
+        cursor = self.connection.cursor()
+
+        # Verificar si ya existe un registro en el histórico para el cliente, obteniendo el último estado
+        query_state = """
+            SELECT motivo
+            FROM historico_motivo
+            WHERE cliente_id = %s
+            ORDER BY fecha_motivo DESC 
+            LIMIT 1
+        """
+        cursor.execute(query_state, (cliente_id,))
+        result = cursor.fetchone()
+
+        # Si no hay registro previo o el último estado es diferente al nuevo, insertar el nuevo estado
+        if result is None or result[0] != nuevo_motivo:
+            query_insert = "INSERT INTO historico_motivo (cliente_id, estado, fecha_motivo, detalle) VALUES (%s, %s, %s, %s)"
+            cursor.execute(query_insert, (cliente_id, nuevo_motivo, datetime.now(), detalle))
+            print(f"Motivo '{nuevo_motivo}' añadido al histórico para el cliente {cliente_id}.")
+
+        self.connection.commit()
+        cursor.close()
+
+        
+    '''
     def agregar_pago_y_confirmar_cita(self, cliente_id, monto, metodo_pago,first_name, last_name):
         """
         Agrega un pago relacionado a la cita más próxima del cliente en estado 'agendada'
@@ -376,14 +431,14 @@ class DataBaseMySQLManager:
         
         # Insertar el pago relacionado a la cita encontrada
         query_pago = """
-            INSERT INTO pagos (cliente_id, cita_id, fecha_pago, monto, metodo_pago, estado_pago,first_name,last_name)
+            INSERT INTO pago (cliente_id, cita_id, fecha_pago, monto, metodo_pago, estado_pago,first_name,last_name)
             VALUES (%s, %s, %s, %s, %s, 'completado',%s,%s)
         """
         cursor.execute(query_pago, (cliente_id, cita_id, fecha_pago, monto, metodo_pago,first_name,last_name))
         pago_id = cursor.lastrowid
 
         # Cambiar el estado de la cita a 'confirmada'
-        query_update_cita = "UPDATE citas SET estado_cita = 'confirmada' WHERE cita_id = %s"
+        query_update_cita = "UPDATE cita SET estado_cita = 'confirmada' WHERE cita_id = %s"
         cursor.execute(query_update_cita, (cita_id,))
 
         # Confirmar cambios en la base de datos
@@ -392,16 +447,17 @@ class DataBaseMySQLManager:
         
         print(f"Pago agregado y cita {cita_id} confirmada para el cliente {cliente_id}.")
         return pago_id
-    
+    '''
+    '''
     def marcar_bound(self, cliente_id, bound):
         self._reconnect_if_needed()
         cursor = self.connection.cursor()
-        query = "UPDATE clientes SET bound = %s WHERE cliente_id = %s"
+        query = "UPDATE cliente SET bound = %s WHERE cliente_id = %s"
         cursor.execute(query, (bound, cliente_id))
         self.connection.commit()
         cursor.close()
         print(f"Cliente {cliente_id} marcado como bound={bound}.")
-
+    '''
 
     def obtener_cita_mas_cercana(self, cliente_id):
         """
@@ -421,7 +477,7 @@ class DataBaseMySQLManager:
 
             # Query para buscar la cita más cercana
             query = """
-                SELECT * FROM citas
+                SELECT * FROM cita
                 WHERE cliente_id = %s AND estado_cita = 'agendada' AND fecha_cita > %s
                 ORDER BY fecha_cita ASC
                 LIMIT 1
@@ -443,7 +499,7 @@ class DataBaseMySQLManager:
     
     def obtener_clientes_por_filtro(self, filtro):
         cursor = self.connection.cursor(dictionary=True)
-        query = "SELECT * FROM clientes WHERE " + filtro
+        query = "SELECT * FROM cliente WHERE " + filtro
         cursor.execute(query)
         return cursor.fetchall()
     
@@ -463,8 +519,8 @@ class DataBaseMySQLManager:
         try:
             # Obtener la campanha activa más reciente
             query_campana = """
-                SELECT * FROM campanhas
-                WHERE estado_campanha = 'activa' AND tipo = 'in'
+                SELECT * FROM campanha
+                WHERE estado_campanha = 'activa'
                 ORDER BY fecha_creacion DESC
                 LIMIT 1
             """
@@ -497,7 +553,7 @@ class DataBaseMySQLManager:
 
                 # Incrementar el num_clientes de la campanha
                 query_update_num_clientes = """
-                    UPDATE campanhas
+                    UPDATE campanha
                     SET num_clientes = num_clientes + 1
                     WHERE campanha_id = %s
                 """
@@ -520,11 +576,11 @@ class DataBaseMySQLManager:
         Busca una cita agendada para un cliente en una fecha específica.
         """
         cursor = self.connection.cursor(dictionary=True)
-        query = "SELECT * FROM citas WHERE cliente_id = %s AND fecha_cita = %s"
+        query = "SELECT * FROM cita WHERE cliente_id = %s AND fecha_cita = %s"
         cursor.execute(query, (cliente_id, fecha_cita))
         return cursor.fetchone()
     
-    def obtener_clientes_filtrados(self, fecha_inicio=None, fecha_fin=None, estado=None, limite=None, bound=None):
+    def obtener_clientes_filtrados(self, fecha_inicio=None, fecha_fin=None, estado=None, limite=None):
         """
         Obtiene clientes filtrados por fecha de creación, estado (simple o múltiple), bound y/o límite de registros.
 
@@ -545,7 +601,7 @@ class DataBaseMySQLManager:
         cursor = self.connection.cursor(dictionary=True)
 
         # Construcción dinámica de la consulta
-        query = "SELECT * FROM clientes WHERE 1=1"
+        query = "SELECT * FROM cliente WHERE 1=1"
         params = []
 
         # Filtro por fecha de creación (si se proporciona)
@@ -568,11 +624,6 @@ class DataBaseMySQLManager:
                 query += " AND estado = %s"
                 params.append(estado)
 
-        # Filtro por bound (si se proporciona)
-        if bound is not None:
-            query += " AND bound = %s"
-            params.append(bound)
-
         # Límite de registros (si se proporciona)
         if limite:
             query += " LIMIT %s"
@@ -586,6 +637,7 @@ class DataBaseMySQLManager:
         return resultados
     
 
+    '''
     def actualizar_in_out_cliente(self, cliente_id, in_out_valor):
         """
         Actualiza el campo in_out para un cliente específico.
@@ -596,8 +648,9 @@ class DataBaseMySQLManager:
         """
         self._reconnect_if_needed()
         cursor = self.connection.cursor()
-        query = "UPDATE clientes SET in_out = %s WHERE cliente_id = %s"
+        query = "UPDATE cliente SET in_out = %s WHERE cliente_id = %s"
         cursor.execute(query, (in_out_valor, cliente_id))
         self.connection.commit()
         cursor.close()
         print(f"Cliente {cliente_id} se ha actualizado el campo in_out a {in_out_valor}.")
+    '''
