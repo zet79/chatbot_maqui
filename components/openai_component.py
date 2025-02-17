@@ -8,7 +8,7 @@ from datetime import datetime
 class OpenAIManager:
     def __init__(self):
         self.client = OpenAI(api_key=openai_api_key)
-
+    #FALTA ARREGLAR ESTO
     def consulta(self, cliente,conversation_actual,cliente_nuevo,campania):
         response = self.client.chat.completions.create(
             model="gpt-4o",

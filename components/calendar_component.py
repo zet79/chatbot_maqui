@@ -10,18 +10,21 @@ import os.path
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
 
 class GoogleCalendarManager:
-    #CALENDAR_ID = "195010dac8c1b91a8bbee7c8b9476895cc5cbf034e9d09bbf9fb7490e3f89d07@group.calendar.google.com"
-    CALENDAR_ID = "admin@digitalintelligence.com"
+    SCOPES = ["https://www.googleapis.com/auth/calendar"]
+    SERVICE_ACCOUNT_FILE = "service_account_credentials.json"  # Archivo JSON de credenciales
+    CALENDAR_ID = "maquisistemabot@gmail.com"  # Cambia esto si usas otro calendario
+
     def __init__(self):
+        """Inicializa la autenticación con la cuenta de servicio"""
         self.service = self._authenticate()
 
     def _authenticate(self):
-        """Autenticación usando una cuenta de servicio."""
+        """Autenticación con Google Calendar API usando la cuenta de servicio"""
         credentials = Credentials.from_service_account_file(
-            "service_account_credentials.json",  # Archivo JSON descargado
-            scopes=SCOPES
+            self.SERVICE_ACCOUNT_FILE, scopes=self.SCOPES
         )
         return build("calendar", "v3", credentials=credentials)
+    
 
     def listar_eventos_calendario(self):
         """Listar eventos del calendario configurado."""
