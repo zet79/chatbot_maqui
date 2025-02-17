@@ -10,3 +10,6 @@ __pycache__/
 
 # Ignorar archivo de api keys 
 api_keys.py
+
+#Ignorar componentes
+componentes/

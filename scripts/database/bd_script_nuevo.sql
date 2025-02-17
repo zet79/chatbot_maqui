@@ -13,6 +13,7 @@ DROP TABLE IF EXISTS historico_motivo;
 DROP TABLE IF EXISTS persona;
 DROP TABLE IF EXISTS usuario;
 DROP TABLE IF EXISTS leadh;
+DROP TABLE IF EXISTS codigo_pago;
 DROP TABLE IF EXISTS cliente;
 DROP TABLE IF EXISTS campanha;
 DROP TABLE IF EXISTS template;
@@ -197,16 +198,17 @@ CREATE TABLE accion_comercial (
   cliente_id int DEFAULT NULL,
   cita_id int DEFAULT NULL,
   pago_id int DEFAULT NULL,
-  asesor_id int DEFAULT NULL,
+  persona_id int DEFAULT NULL,
   nota text NOT NULL,
   PRIMARY KEY (accion_comercial_id),
   KEY cliente_id (cliente_id),
   KEY cita_id (cita_id),
   KEY pago_id (pago_id),
-  KEY asesor_id (asesor_id),
+  KEY persona_id (persona_id),
   CONSTRAINT accion_comercial_ibfk_1 FOREIGN KEY (cliente_id) REFERENCES cliente (cliente_id) ON DELETE CASCADE,
   CONSTRAINT accion_comercial_ibfk_2 FOREIGN KEY (cita_id) REFERENCES cita (cita_id) ON DELETE SET NULL,
-  CONSTRAINT accion_comercial_ibfk_3 FOREIGN KEY (pago_id) REFERENCES pago (pago_id) ON DELETE SET NULL
+  CONSTRAINT accion_comercial_ibfk_3 FOREIGN KEY (pago_id) REFERENCES pago (pago_id) ON DELETE SET NULL,
+  CONSTRAINT accion_comercial_ibfk_4 FOREIGN KEY (persona_id) REFERENCES persona (persona_id) ON DELETE SET NULL
 );
 
 -- Tabla de template
@@ -251,6 +253,24 @@ CREATE TABLE cliente_campanha (
   CONSTRAINT cliente_campanha_ibfk_1 FOREIGN KEY (cliente_id) REFERENCES cliente (cliente_id) ON DELETE CASCADE,
   CONSTRAINT cliente_campanha_ibfk_2 FOREIGN KEY (campanha_id) REFERENCES campanha (campanha_id) ON DELETE CASCADE
 );
+
+
+
+
+-- Tabla de codigos de pago  (Bot Daniel)
+CREATE TABLE codigo_pago (
+	id_codigo_pago INT PRIMARY KEY AUTO_INCREMENT,
+    cliente_id INT, -- clave foranea para vincularlo con la tabla cliente
+    codigo INT UNIQUE NOT NULL, -- codigo de pago
+    tipo_codigo VARCHAR(50), -- recaudacion, extranet o especial
+    caso_relacionado VARCHAR(100), -- indica a qué caso está relacionado este código, por ejemplo se usará para 1 o más contratos, adjudicado no adjudicado etc.
+    fecha_asignacion DATE NOT NULL, -- fecha en la que se asigno el código
+    fecha_vencimiento DATE, -- fecha de vencimiento del codigo (puede ser null)
+    activo BOOLEAN DEFAULT TRUE, -- indica si el código está activo (tambien se puede saber esto manualmente por la fecha de vencimiento y fecha actual)
+    pago_realizado BOOLEAN DEFAULT FALSE, -- indica si el pago asociado al codigo se realizó por el cliente o todavia no , SE PODRÍA ELIMINAR ESTE CAMPO
+    FOREIGN KEY (cliente_id) REFERENCES cliente (cliente_id) ON DELETE CASCADE
+);
+
 
 
 
