@@ -3,10 +3,10 @@ DELIMITER ;
 USE bot_maqui_react;
 
 INSERT INTO cliente (documento_identidad, tipo_documento, nombre, apellido, celular, email)
-VALUES (70361965, 'DNI', 'Alicia', 'Cántaro', 953983765, 'patricia@sayainvestments.co');
+VALUES (70361965, 'DNI', 'Alicia', 'Cántaro', '+51953983765', 'patricia@sayainvestments.co');
 
 INSERT INTO cliente (documento_identidad, tipo_documento, nombre, apellido, celular, email)
-VALUES (70361967, 'DNI', 'Daniel', 'Castillo', 941729891, 'daniel.castillo@sayainvestments.co');
+VALUES (70361967, 'DNI', 'Daniel', 'Castillo', '+51941729891', 'daniel.castillo@sayainvestments.co');
 
 -- campanha out: se envia el template asociado (todavia falta crear un template en twilio)
 INSERT INTO campanha (nombre_campanha, descripcion)
@@ -32,5 +32,5 @@ INSERT INTO usuario (username, password, rol_id)
 VALUES ('patricia@sayainvestments.co','1234',1);
 
 INSERT INTO persona (persona_id,nombre, primer_apellido, segundo_apellido,celular)
-VALUES (1,'Patricia','Cántaro','Márquez','953983765');
+VALUES (1,'Patricia','Cántaro','Márquez','+51953983765');
 

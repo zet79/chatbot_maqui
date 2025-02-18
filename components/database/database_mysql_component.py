@@ -168,13 +168,13 @@ class DataBaseMySQLManager:
     '''
 
 
-    def insertar_conversacion(self, cliente_id, mensaje, tipo_conversacion, resultado=None, estado_conversacion="activa"):
+    def insertar_conversacion(self, cliente_id, mensaje, resultado=None, estado_conversacion="activa"):
         self._reconnect_if_needed()
         """Inserta una nueva conversación para un cliente en la tabla de conversaciones."""
         cursor = self.connection.cursor()
-        query = """INSERT INTO conversacion (cliente_id, mensaje, tipo_conversacion, resultado, estado_conversacion, fecha_conversacion)
-                   VALUES (%s, %s, %s, %s, %s, %s)"""
-        cursor.execute(query, (cliente_id, mensaje, tipo_conversacion, resultado, estado_conversacion, datetime.now()))
+        query = """INSERT INTO conversacion (cliente_id, mensaje, resultado, estado_conversacion, fecha_conversacion)
+                   VALUES (%s, %s, %s, %s, %s)"""
+        cursor.execute(query, (cliente_id, mensaje, resultado, estado_conversacion, datetime.now()))
         self.connection.commit()
         return cursor.lastrowid
 

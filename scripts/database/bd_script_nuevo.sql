@@ -78,6 +78,7 @@ CREATE TABLE conversacion (
   resultado varchar(50) DEFAULT NULL,
   estado_conversacion varchar(25) DEFAULT 'activa',
   fecha_ultima_interaccion datetime DEFAULT CURRENT_TIMESTAMP,
+  nivel_satisfaccion varchar(25) DEFAULT NULL,
   PRIMARY KEY (conversacion_id),
   KEY cliente_id (cliente_id),
   CONSTRAINT conversacion_ibfk_1 FOREIGN KEY (cliente_id) REFERENCES cliente (cliente_id) ON DELETE CASCADE
@@ -199,6 +200,8 @@ CREATE TABLE accion_comercial (
   cita_id int DEFAULT NULL,
   pago_id int DEFAULT NULL,
   persona_id int DEFAULT NULL,
+  estado varchar(25) DEFAULT NULL,
+  fecha_accion datetime DEFAULT CURRENT_TIMESTAMP,
   nota text NOT NULL,
   PRIMARY KEY (accion_comercial_id),
   KEY cliente_id (cliente_id),

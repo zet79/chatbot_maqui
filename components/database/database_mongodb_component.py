@@ -9,9 +9,16 @@ class DataBaseMongoDBManager:
 
     def _connect(self):
         #uri = 'mongodb://localhost:27017/'
-        uri = "mongodb+srv://admin:<Camemebert65>@cluster0.1rtzz.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
-        client = MongoClient(uri)
-        return client["maqui_sistemas"]
+        uri = "mongodb+srv://admin:Camembert65@cluster0.1rtzz.mongodb.net/maqui_sistemas?retryWrites=true&w=majority"
+
+        try:
+            client = MongoClient(uri)  # Conectar al servidor
+            db = client["maqui_sistemas"]  # Seleccionar la base de datos
+            print("Conexión exitosa a MongoDB")
+            return db  # Devuelve la base de datos correctamente
+        except Exception as e:
+            print(f"ERROR al conectar con MongoDB: {e}")
+            return None
 
     def _reconnect_if_needed(self):
         """Reconecta si la conexión actual no está activa."""
