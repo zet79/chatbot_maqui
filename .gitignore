@@ -13,3 +13,4 @@ api_keys.py
 
 #Ignorar componentes
 componentes/
+aws_keys/
