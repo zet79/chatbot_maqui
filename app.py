@@ -12,8 +12,8 @@ from flask import Flask, request, jsonify
 from components.twilio_component import TwilioManager
 from components.openai_component import OpenAIManager
 from components.calendar_component import GoogleCalendarManager
-from components.database_mongodb_component import DataBaseMongoDBManager
-from components.database_mysql_component import DataBaseMySQLManager
+from components.database.database_mongodb_component import DataBaseMongoDBManager
+from components.database.database_mysql_component import DataBaseMySQLManager
 from helpers.helpers import format_number, extraer_json,json_a_lista
 from api_keys.api_keys import client_id_zoho, client_secret_zoho, refresh_token_zoho
 from celery_app import celery
@@ -54,124 +54,84 @@ def revoke_task(task_id):
 
 # Función para enviar la respuesta al cliente después del retardo
 @celery.task
-def enviar_respuesta(celular, cliente_nuevo, profileName):
-    print("Enviando respuesta a:", celular)
+def enviar_respuesta(cliente_mysql, conversacion_id_mysql):
+    celular=cliente_mysql["celular"]
+    cliente_id_mysql=cliente_mysql["cliente_id"]
+    print("Enviando respuesta a:",celular )
 
-    # Inicializo los componentes dentro de la tarea
-    twilio = TwilioManager()
-    openai = OpenAIManager()
-    calendar = GoogleCalendarManager()
-    dbMongoManager = DataBaseMongoDBManager()
-    dbMySQLManager = DataBaseMySQLManager()
-
-    cliente = dbMongoManager.obtener_cliente_por_celular(celular)
-    if not cliente:
-        # Algo pasa si no tiene en mongo su 
-        return
-
-    # Obtener o crear cliente en MySQL
-    cliente_id_mysql = dbMySQLManager.obtener_id_cliente_por_celular(celular)
-    if cliente_id_mysql==0:
-        #EL cliente no existe
-        return 
-
-    
-    # Obtener cliente por id
-    cliente_mysql = dbMySQLManager.obtener_cliente(cliente_id_mysql)
-    if cliente_mysql["nombre"] == "":
-        cliente_mysql["nombre"] = profileName
-        dbMySQLManager.actualizar_nombre_cliente(cliente_id_mysql, profileName)
     estado_actual = cliente_mysql['estado']
-    campanha_registro =dbMySQLManager.asociar_cliente_a_campana_mas_reciente(cliente_id_mysql)
+    campanha_registro =dbMySQLManager.asociar_cliente_a_campana_mas_reciente()
     campanha = campanha_registro["descripcion"] if campanha_registro != None else ""  
 
     dbMySQLManager.actualizar_fecha_ultima_interaccion(cliente_id_mysql, datetime.now())
     # Verificar si existe una conversación activa en MySQL para el cliente
-    conversacion_mysql = dbMySQLManager.obtener_conversacion_activa(cliente_id_mysql)
-    if not conversacion_mysql:
-        # Crear conversación activa en MySQL si no existe
-        conversacion_id_mysql = dbMySQLManager.insertar_conversacion(
-            cliente_id=cliente_id_mysql,
-            mensaje="Inicio de conversación",
-            tipo_conversacion="activa",
-            resultado=None,
-            estado_conversacion="activa"
-        )
-    else:
-        conversacion_id_mysql = conversacion_mysql["conversacion_id"]
-
 
     # Obtener la conversación actual del cliente
-    conversation_actual = dbMongoManager.obtener_conversacion_actual(cliente["celular"])
+    conversation_actual = dbMongoManager.obtener_conversacion_actual(celular)
 
     # Obtener el historial de conversaciones del cliente en caso tenga
     # = dbMongoManager.obtener_historial_conversaciones(cliente["celular"]) esto no va
 
     print("Conversación actual:", conversation_actual)
-    # Hacemos un mapeo de intenciones para determinar si el chatbot necesita algo específico
-    # como agendar, pagar, horarios disponibles
-    # regresariamos aqui en caso haya un error <- go to
+
     max_intentos = 5
     intento_actual = 0
 
     while intento_actual < max_intentos:
         try:
-            intencion = openai.clasificar_intencion(conversation_actual)
-            print("Intención detectada antes extraer json:", intencion)
-            intencion = extraer_json(intencion)
-            if intencion is not None:
-                print("Intención detectada:", intencion)
+            motivo = openai.clasificar_motivo(conversation_actual)
+            print("Intención detectada antes extraer json:", motivo)
+            motivo = extraer_json(motivo)
+            if motivo is not None:
+                print("Motivo detectado:", motivo)
                 # Generamos un mensaje de respuesta
                 print("Cliente mysql", cliente_mysql)
-                #intencion_list = intencion.split(")")
-                intencion_list = json_a_lista(intencion)
-                print("Intencion lista: ", intencion_list)
-                if intencion_list[0] == 1:
-                    response_message = openai.consulta(cliente_mysql,conversation_actual,cliente_nuevo,campanha)
-                    
+                #motivo_list = intencion.split(")")
+                motivo_list = json_a_lista(motivo)
+                print("Intencion lista: ", motivo_list)
+                if motivo_list[0] == 1:
+                    nuevo_estado = 'en seguimiento'
                     if es_transicion_valida(estado_actual, nuevo_estado):                           
                         cliente_mysql["estado"] = nuevo_estado
+                        dbMySQLManager.insertar_estado_historico_cliente(cliente_id_mysql, nuevo_estado,motivo_list[1])
                         dbMySQLManager.actualizar_estado_cliente(cliente_id_mysql, nuevo_estado)
-                        dbMySQLManager.actualizar_estado_historico_cliente(cliente_id_mysql, nuevo_estado)
                     else:
                         print(f"No se actualiza el estado desde {estado_actual} a {nuevo_estado}.")
-                elif intencion_list[0] == 2:
-                    if len(intencion_list) > 1:
-                        print("Ingreso a la intencion 2")
-                        nuevo_estado = 'interesado'
-                        if es_transicion_valida(estado_actual, nuevo_estado):
-                            cliente_mysql["estado"] = 'interesado'
-                            dbMySQLManager.actualizar_estado_cliente(cliente_id_mysql, nuevo_estado)  
-                            dbMySQLManager.actualizar_estado_historico_cliente(cliente_id_mysql, nuevo_estado)      
-                        print("Fecha de la cita:", intencion_list[1].strip())
-                        try:
-                            horarios_disponibles = calendar.listar_horarios_disponibles(intencion_list[1].strip())
-                            print("Horarios disponibles:", horarios_disponibles)
-                            response_message = openai.consultaHorarios(cliente_mysql,horarios_disponibles,conversation_actual,intencion_list[1],cliente_nuevo,campanha)
-                        except Exception as e:
-                            print("Error al obtener horarios disponibles:", e)
-                            horarios_disponibles = []
-                            response_message =  f"""{{ "mensaje": "Hubo un error al obtener los horarios disponibles. Por favor, intenta nuevamente." }}"""
-                            raise Exception("Fallo en intención 2 al obtener horarios")
-                    else:
-                        raise Exception("Falta información en la intención 2")
-                elif intencion_list[0] == 3:
-                    if intencion_list[2] == "":
-                        raise Exception("Falta información del nombre en la intención 3")
 
-                    print("Ingreso a la intencion 3")             
-                    print("Fecha y hora de la cita:", intencion_list[1].lstrip())
-                    reserva_cita = calendar.reservar_cita(intencion_list[1].lstrip(), summary=f"Cita reservada para {cliente_mysql['nombre']}",duration_minutes=30)
-                    if not reserva_cita:
-                        response_message = f"""{{"mensaje": "Hubo un error al reservar la cita. Por favor, intenta nuevamente."}}"""
-                    elif reserva_cita == "Horario no disponible":
+                    response_message = "Gracias por responder a este mensaje. Entendemos su situación y estaremos en contacto con usted a través de nuestros asesores."
+                elif motivo_list[0] == 2:
+                    nuevo_estado = 'en seguimiento'
+                    if es_transicion_valida(estado_actual, nuevo_estado):                           
+                        cliente_mysql["estado"] = nuevo_estado
+                        dbMySQLManager.insertar_estado_historico_cliente(cliente_id_mysql, nuevo_estado,motivo_list[1])
+                        dbMySQLManager.actualizar_estado_cliente(cliente_id_mysql, nuevo_estado)
+                    else:
+                        print(f"No se actualiza el estado desde {estado_actual} a {nuevo_estado}.")
+
+                    response_message = "Gracias por responder a este mensaje. Entendemos su situación y estaremos en contacto con usted a través de nuestros asesores."
+                elif motivo_list[0]== 3:
+                    nuevo_estado = 'en seguimiento'
+                    if es_transicion_valida(estado_actual, nuevo_estado):                           
+                        cliente_mysql["estado"] = nuevo_estado
+                        dbMySQLManager.insertar_estado_historico_cliente(cliente_id_mysql, nuevo_estado,motivo_list[1])
+                        dbMySQLManager.actualizar_estado_cliente(cliente_id_mysql, nuevo_estado)
+                    else:
+                        print(f"No se actualiza el estado desde {estado_actual} a {nuevo_estado}.")
+
+                    response_message = "Gracias por responder a este mensaje. Entendemos su situación y estaremos en contacto con usted a través de nuestros asesores."
+                elif motivo_list[0]== 4:
+
+                    '''
+                    print("Ingreso a la intencion 4")             
+                    print("Fecha y hora máxima para el pago:", datetime.now()+3*24)
+                    reserva_pago = calendar.reservar_cita(motivo_list[1].lstrip(), summary=f"Último día de pago reservado para {cliente_mysql['nombre']}",duration_minutes=15)
+                    if not reserva_pago:
+                        response_message = f"""{{"mensaje": "Hubo un error al agendar la fecha del pago. Por favor, intenta nuevamente."}}"""
+                    elif reserva_pago == "Horario no disponible":
                         # Comprobar si esa cita es de el mismo cliente que hace la consulta
-                        cita_cliente = dbMySQLManager.buscar_cita_por_fecha_cliente(cliente_id_mysql, intencion_list[1].lstrip())
-                        if cita_cliente:
-                            print("Cita encontrada:", cita_cliente)
-                            response_message = openai.consultaCitaDelCliente(cliente_mysql,cita_cliente,conversation_actual,cliente_nuevo,campanha)
-                        else:
-                            response_message = f"""{{"mensaje": "Lo siento, el horario seleccionado no está disponible. Por favor, selecciona otro horario."}}"""
+                        cita_cliente = dbMySQLManager.buscar_cita_por_fecha_cliente(cliente_id_mysql, motivo_list[1].lstrip())
+                        response_message = openai.consultaCitaDelCliente(cliente_mysql,cita_cliente,conversation_actual,campanha)
+                        response_message = f"""{{"mensaje": "Lo siento, el horario seleccionado no está disponible. Por favor, selecciona otro horario."}}"""
                     else:
                         nuevo_estado = 'promesas de pago'   
                         if es_transicion_valida(estado_actual, nuevo_estado) :
@@ -192,13 +152,33 @@ def enviar_respuesta(celular, cliente_nuevo, profileName):
                             motivo="Consulta de cita",
                             estado_cita="agendada",
                             conversacion_id=conversacion_id_mysql
-                        )        
+                        )
+                    '''
+                    nuevo_estado = 'promesa de pago'
+                    if es_transicion_valida(estado_actual, nuevo_estado):                           
+                        cliente_mysql["estado"] = nuevo_estado
+                        dbMySQLManager.insertar_estado_historico_cliente(cliente_id_mysql, nuevo_estado,motivo_list[1])
+                        dbMySQLManager.actualizar_estado_cliente(cliente_id_mysql, nuevo_estado)
+                    else:
+                        print(f"No se actualiza el estado desde {estado_actual} a {nuevo_estado}.")
+
+                    response_message = "Gracias por responde a este mensaje. Uno de nuestros asesores le otorgará la información "
+                    "y el código necesarios para el pago en unos momentos."
+
+                else:
+                    if es_transicion_valida(estado_actual, nuevo_estado):                           
+                        cliente_mysql["estado"] = 'no interesado'
+                        dbMySQLManager.insertar_estado_historico_cliente(cliente_id_mysql, nuevo_estado,motivo_list[1])
+                        dbMySQLManager.actualizar_estado_cliente(cliente_id_mysql, nuevo_estado)
+                    else:
+                        print(f"No se actualiza el estado desde {estado_actual} a {nuevo_estado}.")
+
+                    response_message = "Apreciamos su repuesta. Haremos lo posible por continuar ofreciendo un mejor servicio."
             else:
                 response_message = "Lo siento, no pude entender tu mensaje. Por favor, intenta de nuevo."
-                twilio.send_message(cliente["celular"], response_message)
-                dbMongoManager.guardar_respuesta_ultima_interaccion_chatbot(cliente["celular"], response_message)
+                twilio.send_message(celular, response_message)
+                dbMongoManager.guardar_respuesta_ultima_interaccion_chatbot(celular, response_message)
                 dbMySQLManager.actualizar_fecha_ultima_interaccion_bot(cliente_id_mysql, datetime.now())
-                
                 clear_scheduled_task_id(celular)
                 print(f"Terminó la tarea para {celular}, limpiando task_id en Redis.")
                 break
@@ -209,8 +189,8 @@ def enviar_respuesta(celular, cliente_nuevo, profileName):
             if intento_actual == max_intentos:
                 # Si llegamos al máximo de intentos, enviamos un mensaje genérico y salimos
                 response_message = "Lo siento, hubo un problema al procesar tu mensaje. Por favor intenta más tarde."
-                twilio.send_message(cliente["celular"], response_message)
-                dbMongoManager.guardar_respuesta_ultima_interaccion_chatbot(cliente["celular"], response_message)
+                twilio.send_message(celular, response_message)
+                dbMongoManager.guardar_respuesta_ultima_interaccion_chatbot(celular, response_message)
                 dbMySQLManager.actualizar_fecha_ultima_interaccion_bot(cliente_id_mysql, datetime.now())
                 
                 clear_scheduled_task_id(celular)
@@ -234,22 +214,41 @@ def whatsapp_bot():
         print("Mensaje recibido:", incoming_msg)
         print("Remitente:", celular)
         
-        # Obtener cliente de la base de datos
+        
         cliente = dbMongoManager.obtener_cliente_por_celular(celular)
-        cliente_nuevo = False
-        if not cliente:
-            cliente_nuevo = True
-            cliente = dbMongoManager.crear_cliente(nombre="",celular=celular)
-            print("Cliente creado:", cliente)
-        print("Cliente encontrado en la base de datos:", cliente["nombre"])
+        if not cliente: 
+            return
 
+        #Buscar al cliente
+        cliente_mysql = dbMySQLManager.obtener_cliente_por_celular(celular)
+        if not cliente_mysql:
+            return 
+        
+        if cliente_mysql["nombre"] == "":
+            cliente_mysql["nombre"] = profileName
+            dbMySQLManager.actualizar_nombre_cliente(cliente_mysql["cliente_id"], profileName)
+        
         if not dbMongoManager.hay_conversacion_activa(celular):
             # Se crea una conversacion activa, solo se crea
             print("Creando una nueva conversación activa para el cliente.")
             dbMongoManager.crear_conversacion_activa(celular)
+        
+        conversacion_mysql = dbMySQLManager.obtener_conversacion_activa(cliente_mysql["cliente_id"])
+        if not conversacion_mysql:
+            # Crear conversación activa en MySQL si no existe
+            conversacion_id_mysql = dbMySQLManager.insertar_conversacion(
+                cliente_id=cliente_mysql["cliente_id"],
+                mensaje="Inicio de conversación",
+                tipo_conversacion="activa",
+                resultado=None,
+                estado_conversacion="activa"
+            )
 
+        else:
+            conversacion_id_mysql = conversacion_mysql["conversacion_id"]
         # Agrega la interacción del cliente a la conversación actual
         #dbMongoManager.guardar_mensaje_cliente_ultima_interaccion(celular, incoming_msg)
+        
         dbMongoManager.crear_nueva_interaccion(celular, incoming_msg)
         print("Interacción del cliente guardada en la conversación actual.")  
 
@@ -261,7 +260,7 @@ def whatsapp_bot():
 
         # Llama a la tarea de Celery con un retraso de 2 segundos
         new_task = enviar_respuesta.apply_async(
-            args=[celular, cliente_nuevo, profileName],
+            args=[cliente_mysql,conversacion_id_mysql],
             countdown=45
         )
 
@@ -278,6 +277,7 @@ def whatsapp_bot():
 
 
 def es_transicion_valida(estado_actual, nuevo_estado):
+    '''
     prioridad_estados = {
         'pendiente de contacto': 1,
         'seguimiento': 2,
@@ -289,15 +289,20 @@ def es_transicion_valida(estado_actual, nuevo_estado):
         'inactivo': 0
     }
     if estado_actual== 'no interesado' and nuevo_estado == 'no interesado':
-        return True
+        return True    
+    '''
+
 
     if nuevo_estado == estado_actual:
         return False  # No hay cambio de estado
 
+    '''
     # Permitir avanzar a un estado de mayor prioridad
     if prioridad_estados.get(nuevo_estado, -1) > prioridad_estados.get(estado_actual, -1):
         return True
+    '''
 
+    '''
     # Permitir transiciones específicas desde 'finalizado' a ciertos estados
     if estado_actual == 'finalizado' and nuevo_estado in ['seguimiento', 'interesado']:
         return True  # Permitir volver a 'seguimiento' o 'interesado' desde 'finalizado'
@@ -305,8 +310,8 @@ def es_transicion_valida(estado_actual, nuevo_estado):
     # Permitir transiciones a 'no interesado' o 'inactivo' solo desde 'seguimiento' o 'interesado'
     if estado_actual in ['seguimiento', 'interesado'] and nuevo_estado in ['no interesado', 'inactivo']:
         return True  # Permitir cambiar a 'no interesado' o 'inactivo' desde 'seguimiento' o 'interesado'
-
-    return False  # No permitir otras transiciones
+    '''
+    return True  # No permitir otras transiciones
 
 
 def obtener_cliente_id_por_charge(charge):

@@ -39,19 +39,8 @@ Mira este caso de éxito real 📸
 
 def json_a_lista(datos):
     # Asumimos que `datos` ya es un diccionario JSON
-    resultado = [datos.get("intencion")]
-
-    # Agregar "categoria" si está presente
-    if "categoria" in datos:
-        resultado.append(datos["categoria"])
-
-    # Agregar "detalle" si está presente
-    if "detalle" in datos:
-        resultado.append(datos["detalle"])
-
-    if "nombre" in datos:
-        resultado.append(datos["nombre"])
-
+    resultado = [datos.get("motivo")]
+    resultado.append(datos["detalle"])
     return resultado
 
 def extraer_json(texto):

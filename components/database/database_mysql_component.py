@@ -36,6 +36,15 @@ class DataBaseMySQLManager:
         self._reconnect_if_needed()
         """Obtiene el cliente_id usando el número de celular."""
         cursor = self.connection.cursor()
+        query = "SELECT * FROM cliente WHERE celular=celular"
+        cursor.execute(query, (celular,))
+        result = cursor.fetchone()
+        return result[0] if result else None
+    
+    def obtener_cliente_por_celular(self, celular):
+        self._reconnect_if_needed()
+        """Obtiene el cliente_id usando el número de celular."""
+        cursor = self.connection.cursor()
         query = "SELECT cliente_id FROM cliente WHERE celular = %s"
         cursor.execute(query, (celular,))
         result = cursor.fetchone()
