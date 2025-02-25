@@ -7,7 +7,7 @@ import re
 import hashlib
 import redis
 from datetime import datetime, timedelta
-from celery_app import celery
+from config.celery_app import celery
 from flask import Flask, request, jsonify
 from components.twilio_component import TwilioManager
 from components.openai_component import OpenAIManager
@@ -16,8 +16,6 @@ from components.database.database_mongodb_component import DataBaseMongoDBManage
 from components.database.database_mysql_component import DataBaseMySQLManager
 from helpers.helpers import format_number, extraer_json,json_a_lista
 from api_keys.api_keys import client_id_zoho, client_secret_zoho, refresh_token_zoho
-from celery_app import celery
-
 r = redis.Redis(host='localhost', port=6379, db=0)
 
 app = Flask(__name__)
