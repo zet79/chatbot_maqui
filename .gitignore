@@ -12,5 +12,5 @@ __pycache__/
 api_keys.py
 
 #Ignorar componentes
-componentes/
+components/
 aws_keys/

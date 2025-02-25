@@ -15,7 +15,7 @@ from components.calendar_component import GoogleCalendarManager
 from components.database.database_mongodb_component import DataBaseMongoDBManager
 from components.database.database_mysql_component import DataBaseMySQLManager
 from helpers.helpers import format_number, extraer_json,json_a_lista
-from api_keys.api_keys import client_id_zoho, client_secret_zoho, refresh_token_zoho
+#from api_keys.api_keys import client_id_zoho, client_secret_zoho, refresh_token_zoho
 r = redis.Redis(host='localhost', port=6379, db=0)
 
 app = Flask(__name__)
@@ -200,6 +200,7 @@ def enviar_respuesta(cliente_mysql, conversacion_id_mysql):
 
 @app.route('/bot', methods=['POST'])
 def whatsapp_bot():
+    
     try:
         print("RESPUESTA DE TWILIO: ", request)
         print("RESPUESTA DE TWILIO FORM: ", request.form)
@@ -214,11 +215,13 @@ def whatsapp_bot():
         
         
         cliente = dbMongoManager.obtener_cliente_por_celular(celular)
+        print("cliente_mongo:", cliente, type(cliente))
         if not cliente: 
             return
 
         #Buscar al cliente
         cliente_mysql = dbMySQLManager.obtener_cliente_por_celular(celular)
+        print("cliente_mysql:", cliente_mysql, type(cliente_mysql))
         if not cliente_mysql:
             return 
         
@@ -272,6 +275,85 @@ def whatsapp_bot():
     except Exception as e:
         print("Error en whatsapp_bot:", e)
         return "Error interno del servidor", 500
+'''
+@app.route('/bot', methods=['POST'])
+def whatsapp_bot():
+    try:
+        # Intentar obtener los datos del formulario (Twilio envía form-data)
+        body = request.form.get('Body')
+        profileName = request.form.get('ProfileName')
+        sender = request.form.get('From')
+
+        # Si no se encuentran datos en form, intenta obtenerlos como JSON
+        if not body or not sender:
+            data = request.get_json(silent=True)
+            if data:
+                # Algunos clientes pueden enviar el mensaje con otra clave (por ejemplo, "message")
+                body = body or data.get('Body') or data.get('message')
+                profileName = profileName or data.get('ProfileName')
+                sender = sender or data.get('From')
+
+        # Validar que se recibieron los datos necesarios
+        if not body or not sender:
+            print("Datos insuficientes en la solicitud:", request.data)
+            return "Datos insuficientes", 400
+
+        # Procesar los datos recibidos
+        incoming_msg = body.lower()
+        celular = sender.split('whatsapp:')[1]
+        print("Mensaje recibido:", incoming_msg)
+        print("Remitente:", celular)
+        print("Profile Name:", profileName)
+
+        # Resto de la lógica...
+        cliente = dbMongoManager.obtener_cliente_por_celular(celular)
+        if not cliente:
+            return "Cliente no encontrado", 200
+
+        cliente_mysql = dbMySQLManager.obtener_cliente_por_celular(celular)
+        if not cliente_mysql:
+            return "Cliente MySQL no encontrado", 200
+
+        if cliente_mysql["nombre"] == "":
+            cliente_mysql["nombre"] = profileName
+            dbMySQLManager.actualizar_nombre_cliente(cliente_mysql["cliente_id"], profileName)
+
+        if not dbMongoManager.hay_conversacion_activa(celular):
+            print("Creando una nueva conversación activa para el cliente.")
+            dbMongoManager.crear_conversacion_activa(celular)
+
+        conversacion_mysql = dbMySQLManager.obtener_conversacion_activa(cliente_mysql["cliente_id"])
+        if not conversacion_mysql:
+            conversacion_id_mysql = dbMySQLManager.insertar_conversacion(
+                cliente_id=cliente_mysql["cliente_id"],
+                mensaje="Inicio de conversación",
+                tipo_conversacion="activa",
+                resultado=None,
+                estado_conversacion="activa"
+            )
+        else:
+            conversacion_id_mysql = conversacion_mysql["conversacion_id"]
+
+        dbMongoManager.crear_nueva_interaccion(celular, incoming_msg)
+        print("Interacción del cliente guardada en la conversación actual.")
+
+        old_task_id = get_scheduled_task_id(celular)
+        if old_task_id:
+            revoke_task(old_task_id.decode('utf-8'))
+
+        new_task = enviar_respuesta.apply_async(
+            args=[cliente_mysql, conversacion_id_mysql],
+            countdown=45
+        )
+        set_scheduled_task_id(celular, new_task.id)
+        print(f"Tarea programada {new_task.id} para {celular}")
+
+        return 'OK', 200
+
+    except Exception as e:
+        print("Error en whatsapp_bot:", e, flush=True)
+        return "Error interno del servidor", 500
+'''
 
 
 def es_transicion_valida(estado_actual, nuevo_estado):
