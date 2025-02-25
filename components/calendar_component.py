@@ -11,7 +11,7 @@ SCOPES = ["https://www.googleapis.com/auth/calendar"]
 
 class GoogleCalendarManager:
     SCOPES = ["https://www.googleapis.com/auth/calendar"]
-    SERVICE_ACCOUNT_FILE = "service_account_credentials.json"  # Archivo JSON de credenciales
+    SERVICE_ACCOUNT_FILE = os.path.join(os.path.dirname(__file__), "../config/service_account_credentials.json")
     CALENDAR_ID = "maquisistemabot@gmail.com"  # Cambia esto si usas otro calendario
 
     def __init__(self):
@@ -20,6 +20,9 @@ class GoogleCalendarManager:
 
     def _authenticate(self):
         """Autenticación con Google Calendar API usando la cuenta de servicio"""
+        if not os.path.exists(self.SERVICE_ACCOUNT_FILE):
+            raise FileNotFoundError(f"El archivo de credenciales {self.SERVICE_ACCOUNT_FILE} no fue encontrado.")
+
         credentials = Credentials.from_service_account_file(
             self.SERVICE_ACCOUNT_FILE, scopes=self.SCOPES
         )
