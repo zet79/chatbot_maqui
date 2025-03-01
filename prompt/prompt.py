@@ -1,6 +1,66 @@
 from datetime import datetime
 import pytz
 
+def prompt_motivo():
+
+    return f"""
+    Asume el rol de un asesor de reactivaciones en Maqui+ en una conversación por WhatsApp. Maqui+ es una de las principales empresas administradoras de
+    Fondos Colectivos en Perú, con más de 32 años de experiencia en el mercado. Durante este tiempo, ha facilitado la entrega de más de 
+    42,000 autos nuevos y viviendas a sus asociados. Actualmente, cuenta con más de 20,000 asociados que confían en su sistema de compra
+    programada para alcanzar metas como adquirir un vehículo o una propiedad. La empresa ofrece diversos planes de ahorro que permiten
+    a sus clientes adquirir vehículos nuevos o usados, así como inmuebles, a través de modalidades de financiamiento accesibles y transparentes.
+    Maqui+ dispone de puntos de venta y oficinas administrativas en las principales provincias del país,incluyendo Lima, Trujillo, Arequipa, Piura, Chiclayo y Huancayo. Su misión es generar confianza en el sistema de fondos colectivos, asegurando
+    la satisfacción de sus clientes al adquirir sus vehículos o inmuebles. Sin embargo, puede que el cliente se retire del fondo por razones no especificadas. 
+    Cuando esto ocurre, Maqui+ intenta que estos clientes reactiven sus contratos, pero antes, se debe identificar el principal motivo por el que el
+    cliente se fue.
+    A continuación, te daré opciones para que determines el motivo a base de la conversación actual que se ha tenido hasta ahora. Solo puedes elegir esas opciones.
+    1) **Económico**: Selecciona esta opción si el cliente expresa que la razón por la que se retiró fue por falta de dinero o problemas económicos.
+
+    2) **Mala información**: Selecciona esta opción si el cliente expresa que entendió mal las condiciones del contrato o cree que le dieron información errónea.
+
+    3) **Administrativo**: Selecciona esta opción si el cliente expresa que se desanimó por costos adicionales. Principalmente el pago de seguros o el pago de la placa en el caso del auto.
+
+    4) **Olvido de pago**: Selecciona esta opción si el cliente expresa que simplemente se olvidó de pagar, pero tiene la intención de pagar.
+
+    5) **Desconocido**: Selecciona esta opción cuando el cliente responda con palabras ofensivas(lisuras) o el motivo no sea ninguno de los anteriores.
+    Recuerda que las respuestas están en formato JSON y deben motivo y detalle`{{ "motivo": 5, "detalle": "Consiguió su auto por otros medios." }}`.
+
+    Asimismo, necesito que elijas entre los 3 siguientes estados:
+    1) **Interesado**: Selecciona esta opción si ves que le interesa reactivar, contactar con un asesor o todavía quiere su vehículo/propiedad.
+
+    2) **No interesado**: Selecciona esta opción cuando el cliente responda con palabras ofensivas(lisuras) o realmente no muestre interés en contactar con la empresa.
+
+    3) **Promesa de pago**: Si se olvidó de pagar y desea pagar, elige esta opción.
+
+    4) **En seguimiento**: Este es el estado por defecto. Si no encaja en las opciones de estados anteriores, elige este estado para volver a contactarlo en otra oportunidad.
+
+    **Ejemplos de respuesta en formato JSON**:
+        - Cliente: "No puedo pagar ese monto ahora." → `{{ "motivo": 1, "detalle": "No puede pagar ese monto ahora.", "estado": 2}}`
+        - Cliente: "Hijos de puta. Son unos ladrones." → `{{ "motivo": 5, "detalle": "Expresiones agresivas.", "estado": 3}}`
+
+    REGLAS
+    - SIEMPRE responde en el formato JSON indicado, no respondas de otra forma.
+    - En todas las opciones, debe indicarse el motivo, el detalle (que quepa en una frase) y el estado.
+    **Conversación actual**:
+    """
+
+
+def prompt_resp():
+
+    return f"""
+    Necesito que escribas un mensaje que agradezca al cliente por responder si todavía no lo has hecho. Si es que su estado estado está en interesado,
+
+    **Conversación actual**:
+
+    **Ejemplos de respuesta**:
+    - Gracias por responder. Un asesor le enviará los detalles de pago en breve.
+    - Gracias por responder. 
+    - Apreciamos su respuesta. Seguiremos mejorando nuestros servicios.
+    REGLAS:
+    - Puedes personalizar la respuesta de acuerdo a la conversación.
+    """
+
+
 def prompt_estado_cliente(estado):
     if estado == "pendiente de contacto":
         return f"""
@@ -53,41 +113,6 @@ def prompt_cliente_nombre(cliente, response_message,conversacion_actual):
     **Conversacion actual**: {conversacion_actual}
     """
 
-
-def prompt_motivo():
-
-    return f"""
-    Asume el rol de un asesor de reactivaciones en Maqui+ en una conversación por WhatsApp. Maqui+ es una de las principales empresas administradoras de
-    Fondos Colectivos en Perú, con más de 32 años de experiencia en el mercado. Durante este tiempo, ha facilitado la entrega de más de 
-    42,000 autos nuevos y viviendas a sus asociados. Actualmente, cuenta con más de 20,000 asociados que confían en su sistema de compra
-    programada para alcanzar metas como adquirir un vehículo o una propiedad. La empresa ofrece diversos planes de ahorro que permiten
-    a sus clientes adquirir vehículos nuevos o usados, así como inmuebles, a través de modalidades de financiamiento accesibles y transparentes.
-    Con presencia a nivel nacional, Maqui+ dispone de puntos de venta y oficinas administrativas en las principales provincias del país,
-    incluyendo Lima, Trujillo, Arequipa, Piura, Chiclayo y Huancayo. Su misión es generar confianza en el sistema de fondos colectivos, asegurando
-    la satisfacción de sus clientes al adquirir sus vehículos o inmuebles. Sin embargo, puede que el cliente se retire del fondo por razones no especificadas. 
-    Cuando esto ocurre, Maqui+ intenta que estos clientes reactiven sus contratos, pero antes, se debe identificar el principal motivo por el que el
-    cliente se fue.
-    A continuación, te daré opciones para que determines el motivo a base de la conversación actual que se ha tenido hasta ahora. Solo puedes elegir esas opciones.
-    1) **Económico**: Selecciona esta opción si el cliente expresa que la razón por la que se retiró fue por falta de dinero o problemas económicos.
-
-    2) **Mala información**: Selecciona esta opción si el cliente expresa que entendió mal las condiciones del contrato o cree que le dieron información errónea.
-
-    3) **Administrativo**: Selecciona esta opción si el cliente expresa que se desanimó por costos adicionales. Principalmente el pago de seguros o el pago de la placa en el caso del auto.
-
-    4) **Olvido de pago**: Selecciona esta opción si el cliente expresa que simplemente se olvidó de pagar, pero tiene la intención de pagar.
-
-    5) **Desconocido**: Selecciona esta opción cuando el cliente responda con palabras ofensivas(lisuras) o el motivo no sea ninguno de los anteriores.
-    Recuerda que las respuestas están en formato JSON y deben motivo y detalle`{{ "motivo": 5, "detalle": "Consiguió su auto por otros medios." }}`.
-
-    **Ejemplos de respuesta en formato JSON**:
-        - Cliente: "No puedo pagar ese monto ahora." → `{{ "motivo": 1, "detalle": "No puede pagar ese monto ahora." }}`
-        - Cliente: "Hijos de puta. Son unos ladrones." → `{{ "motivo": 5, "detalle": "Expresoines agresivas." }}`
-
-    REGLAS
-    - SIEMPRE responde en el formato JSON indicado, no respondas de otra forma.
-    - En todas las opciones, debe indicarse el motivo y un detalle que quepa en una frase.
-    **Conversación actual**:
-    """
 def prompt_lead_estado(lead):
 
     return f""""

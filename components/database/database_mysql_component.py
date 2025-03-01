@@ -234,6 +234,14 @@ class DataBaseMySQLManager:
         cursor.execute(query,(nuevo_estado,client_id))
         self.connection.commit()
         print(f"Estado del cliente {client_id} actualizado a {nuevo_estado}.")
+
+    def actualizar_motivo_cliente(self, client_id, nuevo_motivo):
+        self._reconnect_if_needed()
+        cursor = self.connection.cursor()
+        query = "UPDATE cliente SET motivo = %s WHERE cliente_id = %s"
+        cursor.execute(query,(nuevo_motivo,client_id))
+        self.connection.commit()
+        print(f"Motivo del cliente {client_id} actualizado a {nuevo_motivo}.")
     
 
     '''
@@ -388,7 +396,7 @@ class DataBaseMySQLManager:
             SELECT motivo
             FROM historico_motivo
             WHERE cliente_id = %s
-            ORDER BY fecha_motivo DESC 
+            ORDER BY fecha_cambio DESC 
             LIMIT 1
         """
         cursor.execute(query_state, (cliente_id,))
@@ -396,7 +404,7 @@ class DataBaseMySQLManager:
 
         # Si no hay registro previo o el último estado es diferente al nuevo, insertar el nuevo estado
         if result is None or result[0] != nuevo_motivo:
-            query_insert = "INSERT INTO historico_motivo (cliente_id, estado, fecha_motivo, detalle) VALUES (%s, %s, %s, %s)"
+            query_insert = "INSERT INTO historico_motivo (cliente_id, motivo, fecha_cambio, detalle) VALUES (%s, %s, %s, %s)"
             cursor.execute(query_insert, (cliente_id, nuevo_motivo, datetime.now(), detalle))
             print(f"Motivo '{nuevo_motivo}' añadido al histórico para el cliente {cliente_id}.")
 

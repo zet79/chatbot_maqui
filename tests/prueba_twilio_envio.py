@@ -10,9 +10,9 @@ dbMongoManager = DataBaseMongoDBManager()
 dbMySQLManager = DataBaseMySQLManager()
 
 
-response_message = "Hola! ¿Por qué no reactivas?"
-celular = '+51953983765'
-cliente_id_mysql = 1
+response_message = "¡Hola! Hemos notado que tienes pagos pendientes en tus contratos de Maqui+ y nos gustaría saber por qué no reactivas con nosotros."
+celular = '+51941729891'
+cliente_id_mysql = 2
 
 twilio_manager.send_message(celular, response_message)
 

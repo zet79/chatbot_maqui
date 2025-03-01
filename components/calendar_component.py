@@ -27,7 +27,36 @@ class GoogleCalendarManager:
             self.SERVICE_ACCOUNT_FILE, scopes=self.SCOPES
         )
         return build("calendar", "v3", credentials=credentials)
-    
+        
+    def reservar_cita(self, fecha_hora, summary="Cita reservada", timezone="America/Lima", duration_minutes=60, attendees=None):
+        try:
+            lima_tz = pytz.timezone("America/Lima")
+            start_datetime = dt.datetime.strptime(fecha_hora, "%Y-%m-%d %H:%M")
+            start_datetime = lima_tz.localize(start_datetime)
+            end_datetime = start_datetime + dt.timedelta(minutes=duration_minutes)
+
+            start_time = start_datetime.isoformat()
+            end_time = end_datetime.isoformat()
+
+            # Deshabilita la verificación de conflictos y permite reservas superpuestas
+            event = self.create_event(
+                summary=summary,
+                start_time=start_time,
+                end_time=end_time,
+                timezone=timezone,
+                attendees=attendees
+            )
+
+            if event:
+                print(f"Cita reservada exitosamente: {event['id']}")
+                return event
+            else:
+                print("Error: No se pudo crear el evento en Google Calendar.")
+                return None
+
+        except Exception as e:
+            print(f"Error al reservar cita: {e}")
+            return None
 
     def listar_eventos_calendario(self):
         """Listar eventos del calendario configurado."""
@@ -193,49 +222,6 @@ class GoogleCalendarManager:
         except Exception as e:
             print(f"Error al verificar disponibilidad: {e}")
             return False
-
-    def reservar_cita(self, fecha_hora, summary="Cita reservada", timezone="America/Lima", duration_minutes=60, attendees=None):
-        """
-        Reservar una cita en el calendario configurado.
-        
-        :param fecha_hora: Fecha y hora de inicio en formato "YYYY-MM-DD HH:MM".
-        :param summary: Resumen o título de la cita.
-        :param timezone: Zona horaria del evento (por defecto, "America/Lima").
-        :param duration_minutes: Duración de la cita en minutos (por defecto, 60).
-        :param attendees: Lista de asistentes (opcional).
-        :return: El evento creado, o None si ocurre un error.
-        """
-        try:
-            # Convertir la fecha y hora de inicio en un objeto datetime
-            start_datetime = dt.datetime.strptime(fecha_hora, "%Y-%m-%d %H:%M")
-
-            # Calcular la fecha y hora de fin sumando la duración de la cita
-            end_datetime = start_datetime + dt.timedelta(minutes=duration_minutes)
-
-            # Verificar si el horario está disponible
-            if not self.is_time_available(start_datetime, end_datetime):
-                print("El horario no está disponible. Por favor, elige otro horario.")
-                return "Horario no disponible"
-
-            # Formatear las fechas y horas en el formato ISO con zona horaria
-            start_time = start_datetime.isoformat()
-            end_time = end_datetime.isoformat()
-
-            # Crear el evento en el calendario configurado
-            event = self.create_event(
-                summary=summary,
-                start_time=start_time,
-                end_time=end_time,
-                timezone=timezone,
-                attendees=attendees
-            )
-
-            print(f"Cita reservada exitosamente: {event['id']}")
-            return event
-
-        except Exception as e:
-            print(f"Error al reservar cita: {e}")
-            return None
         
     def eliminar_evento_por_rango_horario(self, fecha, hora_inicio, duracion_minutos=30):
         """
