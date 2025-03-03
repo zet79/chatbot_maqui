@@ -124,6 +124,21 @@ class DataBaseMongoDBManager:
 
         return historial_completado   
 
+    def cerrar_conversacion(celular, conversacion_id_mongo):
+        # Actualiza el estado de la conversación específica en MongoDB
+        self.db.clientes.update_one(
+            {
+                "celular": celular,
+                "conversaciones.conversacion_id": conversacion_id_mongo
+            },
+            {
+                "$set": {
+                    "conversaciones.$.estado": "completada"
+                }
+            }
+        )
+        print(f"Conversación {conversacion_id_mongo} cerrada para el celular: {celular}")
+ 
     def guardar_respuesta_ultima_interaccion_chatbot(self, celular, respuesta_chatbot):
         self._reconnect_if_needed()  # Verifica o reconecta
         """Guarda la respuesta del chatbot en la última interacción de la última conversación activa."""

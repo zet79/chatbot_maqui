@@ -45,4 +45,4 @@ Hemos notado que tienes pagos pendientes en tus contratos de Maqui+ y nos gustar
 ¡Esperamos tu respuesta! 😊',CURRENT_TIMESTAMP,'HX23569fa3042566dbd3ba6ceaa1e8e4a1');
 
 INSERT INTO template (nombre_template,mensaje,created_at,template_content_sid)
-VALUES ('pruebita','¡Hola! Tienes contratos pendientes y nos gustaría saber por qué no reactivas con nosotros.',CURRENT_TIMESTAMP,'HHX57ffed57805b930892ade47f1147bfbe');
+VALUES ('pruebita','¡Hola! Tienes contratos pendientes y nos gustaría saber por qué no reactivas con nosotros.',CURRENT_TIMESTAMP,'HX57ffed57805b930892ade47f1147bfbe');

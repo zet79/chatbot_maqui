@@ -53,9 +53,29 @@ def revoke_task(task_id):
     except Exception as e:
         print(f"Error revocando tarea: {e}")
 
-@celery.task
-def enviar_respuesta(cliente_mysql, conversacion_id_mysql):
+@celery.task(bind=True)
+def cerrarConversacion(self, conversacion_id_mysql, conversacion_id_mongo, celular):
+    # Guarda el task_id actual
+    task_id_actual = self.request.id
+    print(f"Tarea cerrarConversacion iniciada con task_id: {task_id_actual} para el celular: {celular}")
+
+    try:
+        dbMySQLManager.actualizar_estado_conversacion(conversacion_id_mysql, 'completada')
+        dbMongoManager.cerrar_conversacion(conversacion_id_mongo)
+
+    except Exception as e:
+        print(f"Error en cerrarConversacion: {e}")
+    finally:
+        # Solo limpia el task_id si coincide con el actual
+        task_id_almacenado = get_scheduled_task_id(f"cerrar_{celular}")
+        if task_id_almacenado and task_id_almacenado.decode("utf-8") == task_id_actual:
+            clear_scheduled_task_id(f"cerrar_{celular}")  # Limpieza segura
+
+@celery.task(bind=True)
+def enviar_respuesta(self, cliente_mysql, conversacion_id_mysql, conversation_actual):
     celular = cliente_mysql["celular"]
+    task_id_actual = self.request.id
+    print(f"Tarea enviar_respuesta iniciada con task_id: {task_id_actual} para el celular: {celular}")
     nombre = cliente_mysql["nombre"]
     cliente_id_mysql = cliente_mysql["cliente_id"]
     motivo_actual=cliente_mysql['motivo']
@@ -67,58 +87,66 @@ def enviar_respuesta(cliente_mysql, conversacion_id_mysql):
     campanha = campanha_registro["descripcion"] if campanha_registro else ""
     
     dbMySQLManager.actualizar_fecha_ultima_interaccion(cliente_id_mysql, datetime.now(pytz.utc))
-    
-    conversation_actual = dbMongoManager.obtener_conversacion_actual(celular)
+
     print("Conversación actual:", conversation_actual)
     
     max_intentos = 5
     intento_actual = 0
-    while intento_actual < max_intentos:
-        try:
-            motivo = openai.clasificar_motivo(conversation_actual)
-            print("Intención detectada antes extraer json:", motivo)
-            motivo = extraer_json(motivo)
-            
-            if motivo:
-                print("Motivo detectado:", motivo)
-                motivo_list = json_a_lista(motivo)
+    try:
+        while intento_actual < max_intentos:
+            try:
+                motivo = openai.clasificar_motivo(conversation_actual)
+                print("Intención detectada antes extraer json:", motivo)
+                motivo = extraer_json(motivo)
+                
+                if motivo:
+                    print("Motivo detectado:", motivo)
+                    motivo_list = json_a_lista(motivo)
+                    if not (motivo_list[0] in [1, 2, 3, 4, 5]):
+                        raise ValueError("El motivo no está entre 1,2,3,4 o 5")
+                    if not (motivo_list[1] in [1, 2, 3, 4]):
+                        raise ValueError("El estado no está entre 1,2,3 o 4")
 
-                if motivo_list[0] == 4:
-                    lima_tz = pytz.timezone("America/Lima")
-                    date = datetime.now(lima_tz) + timedelta(days=3)
-                    date_str = date.strftime("%Y-%m-%d %H:%M")
-                    reserva_cita = calendar.reservar_cita(date_str, summary=f"Cita reservada para {nombre}", duration_minutes=15)
+                    if motivo_list[0] == 4:
+                        lima_tz = pytz.timezone("America/Lima")
+                        date = datetime.now(lima_tz) + timedelta(days=3)
+                        date_str = date.strftime("%Y-%m-%d %H:%M")
+                        reserva_cita = calendar.reservar_cita(date_str, summary=f"Cita reservada para {nombre}", duration_minutes=15)
+                        
+                        if reserva_cita and "start" in reserva_cita and "dateTime" in reserva_cita["start"]:
+                            utc_tz = pytz.utc
+                            date_lima = datetime.fromisoformat(reserva_cita["start"]["dateTime"]).astimezone(utc_tz)
+                            date_bd = date_lima.strftime('%Y-%m-%d %H:%M:%S')
+                            dbMySQLManager.insertar_cita(cliente_id_mysql, date_bd, "pendiente", conversacion_id_mysql)
+                        else:
+                            print("Error: No se pudo reservar la cita correctamente.")
                     
-                    if reserva_cita and "start" in reserva_cita and "dateTime" in reserva_cita["start"]:
-                        utc_tz = pytz.utc
-                        date_lima = datetime.fromisoformat(reserva_cita["start"]["dateTime"]).astimezone(utc_tz)
-                        date_bd = date_lima.strftime('%Y-%m-%d %H:%M:%S')
-                        dbMySQLManager.insertar_cita(cliente_id_mysql, date_bd, "pendiente", conversacion_id_mysql)
-                    else:
-                        print("Error: No se pudo reservar la cita correctamente.")                  
-                nuevo_motivo=name_motivo(motivo_list[0])
-                nuevo_estado = name_estado(motivo_list[1])
-                guardar_motivo(motivo_actual,nuevo_motivo,cliente_id_mysql,motivo_list[1])
-                guardar_estado(estado_actual,nuevo_estado,cliente_id_mysql,"Cambio de estado: "+ nuevo_estado)
-                response_message = openai.mensaje_personalizado(nuevo_motivo,nuevo_estado,detalle,conversation_actual)  
-                print("Response message json:", response_message)
-                twilio.send_message(celular, response_message)
-                dbMongoManager.guardar_respuesta_ultima_interaccion_chatbot(celular, response_message)
-                dbMySQLManager.actualizar_fecha_ultima_interaccion_bot(cliente_id_mysql, datetime.now(pytz.utc))
-                clear_scheduled_task_id(celular)
-                break
-            else:
-                raise ValueError("No se pudo extraer un motivo válido")
-        except Exception as e:
-            intento_actual += 1
-            print(f"Error procesando intenciones (intento {intento_actual}/{max_intentos}): {e}")
-            if intento_actual == max_intentos:
-                response_message = "Lo siento, hubo un problema al procesar tu mensaje. Inténtalo más tarde."
-                twilio.send_message(celular, response_message)
-                dbMongoManager.guardar_respuesta_ultima_interaccion_chatbot(celular, response_message)
-                dbMySQLManager.actualizar_fecha_ultima_interaccion_bot(cliente_id_mysql, datetime.now(pytz.utc))
-                clear_scheduled_task_id(celular)
-                break
+                    nuevo_motivo = name_motivo(motivo_list[0])
+                    nuevo_estado = name_estado(motivo_list[1])
+                    detalle = motivo_list[2]
+                    guardar_motivo(motivo_actual, nuevo_motivo, cliente_id_mysql, motivo_list[1])
+                    guardar_estado(estado_actual, nuevo_estado, cliente_id_mysql, "Cambio de estado: " + nuevo_estado)
+                    response_message = openai.mensaje_personalizado(nuevo_motivo, nuevo_estado, detalle, conversation_actual)
+                    print("Response message json:", response_message)
+                    twilio.send_message(celular, response_message)
+                    dbMongoManager.guardar_respuesta_ultima_interaccion_chatbot(celular, response_message)
+                    dbMySQLManager.actualizar_fecha_ultima_interaccion_bot(cliente_id_mysql, datetime.now(pytz.utc))
+                    break  # Sale del while si todo sale bien
+                else:
+                    raise ValueError("No se pudo extraer un motivo válido")
+            except Exception as e:
+                intento_actual += 1
+                print(f"Error procesando intenciones (intento {intento_actual}/{max_intentos}): {e}")
+                if intento_actual == max_intentos:
+                    response_message = "Lo siento, hubo un problema al procesar tu mensaje. Inténtalo más tarde."
+                    twilio.send_message(celular, response_message)
+                    dbMongoManager.guardar_respuesta_ultima_interaccion_chatbot(celular, response_message)
+                    dbMySQLManager.actualizar_fecha_ultima_interaccion_bot(cliente_id_mysql, datetime.now(pytz.utc))
+                    break
+    finally:
+        task_id_almacenado = get_scheduled_task_id(f"respuesta_{celular}")
+        if task_id_almacenado and task_id_almacenado.decode("utf-8") == task_id_actual:
+            clear_scheduled_task_id(f"respuesta_{celular}") 
 
 @app.route('/bot', methods=['POST'])
 def whatsapp_bot():
@@ -147,14 +175,16 @@ def whatsapp_bot():
         if not cliente_mysql:
             return 
         
-        if cliente_mysql["nombre"] == "":
+        if cliente_mysql["nombre"].strip() == "":
             cliente_mysql["nombre"] = profileName
             dbMySQLManager.actualizar_nombre_cliente(cliente_mysql["cliente_id"], profileName)
         
-        if not dbMongoManager.hay_conversacion_activa(celular):
+        conversacion_activa=dbMongoManager.obtener_conversacion_actual(celular)
+        if not conversacion_activa:
             # Se crea una conversacion activa, solo se crea
             print("Creando una nueva conversación activa para el cliente.")
             dbMongoManager.crear_conversacion_activa(celular)
+            conversacion_activa=dbMongoManager.obtener_conversacion_actual(celular)
         
         conversacion_mysql = dbMySQLManager.obtener_conversacion_activa(cliente_mysql["cliente_id"])
         if not conversacion_mysql:
@@ -174,23 +204,34 @@ def whatsapp_bot():
         dbMongoManager.crear_nueva_interaccion(celular, incoming_msg)
         print("Interacción del cliente guardada en la conversación actual.")  
 
-        # Revisar si ya hay una tarea pendiente para este celular
-        old_task_id = get_scheduled_task_id(celular)
-        if old_task_id:
-            print(f"Revocando tarea anterior {old_task_id.decode('utf-8')} para {celular}")
-            revoke_task(old_task_id.decode('utf-8'))  # Revocar tarea anterior
-            clear_scheduled_task_id(celular)  # Eliminar de Redis
+       
+        task_id_resp = get_scheduled_task_id(f"respuesta_{celular}")
+        task_id_cerr= get_scheduled_task_id(f"cerrar_{celular}")
+
+        if task_id_resp:
+            print(f"Revocando tarea de respuesta {task_id_resp.decode('utf-8')} para {celular}")
+            revoke_task(task_id_resp.decode('utf-8'))  # Revocar tarea de respuesta
+            clear_scheduled_task_id(f"respuesta_{celular}")  # Eliminar task_id de Redis
+
+        if task_id_cerr:
+            print(f"Revocando tarea de cierre {task_id_cerr.decode('utf-8')} para {celular}")
+            revoke_task(task_id_cerr.decode('utf-8'))  # Revocar tarea de cierre
+            clear_scheduled_task_id(f"cerrar_{celular}")  # Eliminar task_id de Redis
 
         # Llama a la tarea de Celery con un retraso de 2 segundos
-        new_task = enviar_respuesta.apply_async(
-            args=[cliente_mysql,conversacion_id_mysql],
+        new_task_resp = enviar_respuesta.apply_async(
+            args=[cliente_mysql,conversacion_id_mysql,conversacion_activa],
             countdown=30
         )
 
-        # 4) Guardar el task_id en Redis
-        set_scheduled_task_id(celular, new_task.id)
+        if conversacion_activa and "conversacion_id" in conversacion_activa:
+            new_task_cerr = cerrarConversacion.apply_async(
+                args=[conversacion_id_mysql, conversacion_activa.get("conversacion_id"), celular],
+                countdown=630
+            )
 
-        print(f"Tarea programada {new_task.id} para {celular}")
+        set_scheduled_task_id(f"respuesta_{celular}", new_task_resp.id)
+        set_scheduled_task_id(f"cerrar_{celular}", new_task_cerr.id)
 
         return 'OK', 200
 
@@ -210,6 +251,17 @@ def name_motivo(motivo_num):
         return 'olvido de pago'
     else:
         return 'desconocido'
+
+
+def name_estado(estado_num):
+    if estado_num==1:
+        return 'interesado'
+    elif estado_num==2:
+        return 'no interesado'
+    elif estado_num==3:
+        return 'promesa de pago'
+    else:
+        return 'en seguimiento'
 
 def guardar_motivo(motivo_actual, nuevo_motivo, cliente_id_mysql, detalle):
     if nuevo_motivo and motivo_actual and es_motivo_valido(motivo_actual, nuevo_motivo):

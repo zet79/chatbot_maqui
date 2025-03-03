@@ -35,8 +35,8 @@ def prompt_motivo():
     4) **En seguimiento**: Este es el estado por defecto. Si no encaja en las opciones de estados anteriores, elige este estado para volver a contactarlo en otra oportunidad.
 
     **Ejemplos de respuesta en formato JSON**:
-        - Cliente: "No puedo pagar ese monto ahora." → `{{ "motivo": 1, "detalle": "No puede pagar ese monto ahora.", "estado": 2}}`
-        - Cliente: "Hijos de puta. Son unos ladrones." → `{{ "motivo": 5, "detalle": "Expresiones agresivas.", "estado": 3}}`
+        - Cliente: "No puedo pagar ese monto ahora." → `{{ "motivo": 1, "estado": 2, "detalle": "No puede pagar ese monto ahora."}}`
+        - Cliente: "Hijos de puta. Son unos ladrones." → `{{ "motivo": 5, "estado": 3, "detalle": "Expresiones agresivas."}}`
 
     REGLAS
     - SIEMPRE responde en el formato JSON indicado, no respondas de otra forma.
@@ -45,26 +45,25 @@ def prompt_motivo():
     """
 
 
-def prompt_resp(nuevo_motivo,nuevo_estado,detalle,conversacion_actual_formateada):
+def prompt_resp(nuevo_motivo, nuevo_estado, detalle, conversacion_actual_formateada):
     return f"""
     Necesito que escribas un mensaje que agradezca al cliente por responder si todavía no lo has hecho. Si es que su estado está en interesado, 
     asegúrale que será contactado en breve por un asesor.
 
     **Ejemplos de respuesta**:
-    - Gracias por responder. Un asesor le enviará los detalles de pago en breve.
+    - Gracias por responder. Un asesor le enviará los detalles de pago en breve.
     - Gracias por responder. 
-    - Apreciamos su respuesta. Seguiremos mejorando nuestros servicios.
+    - Apreciamos su respuesta. Seguiremos mejorando nuestros servicios.
+    
     REGLAS:
     - Puedes personalizar la respuesta de acuerdo a la conversación.
 
-    **Estado**: """ +nuevo_estado+
+    **Estado**: {nuevo_estado}
+    **Motivo**: {nuevo_motivo}
+    **Detalle**: {detalle}
+    **Conversación actual**: {conversacion_actual_formateada}
+    """
 
-    """
-    **Motivo**: """ + nuevo_motivo + 
-    """
-    **Detalle**: """ + detalle+
-    """
-    Conversación actual: """ +conversacion_actual_formateada
     
 
 

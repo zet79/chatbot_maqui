@@ -40,6 +40,7 @@ Mira este caso de éxito real 📸
 def json_a_lista(datos):
     # Asumimos que `datos` ya es un diccionario JSON
     resultado = [datos.get("motivo")]
+    resultado.append(datos["estado"])
     resultado.append(datos["detalle"])
     return resultado
 
