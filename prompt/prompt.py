@@ -45,12 +45,10 @@ def prompt_motivo():
     """
 
 
-def prompt_resp():
-
+def prompt_resp(nuevo_motivo,nuevo_estado,detalle,conversacion_actual_formateada):
     return f"""
-    Necesito que escribas un mensaje que agradezca al cliente por responder si todavía no lo has hecho. Si es que su estado estado está en interesado,
-
-    **Conversación actual**:
+    Necesito que escribas un mensaje que agradezca al cliente por responder si todavía no lo has hecho. Si es que su estado está en interesado, 
+    asegúrale que será contactado en breve por un asesor.
 
     **Ejemplos de respuesta**:
     - Gracias por responder. Un asesor le enviará los detalles de pago en breve.
@@ -58,7 +56,16 @@ def prompt_resp():
     - Apreciamos su respuesta. Seguiremos mejorando nuestros servicios.
     REGLAS:
     - Puedes personalizar la respuesta de acuerdo a la conversación.
+
+    **Estado**: """ +nuevo_estado+
+
     """
+    **Motivo**: """ + nuevo_motivo + 
+    """
+    **Detalle**: """ + detalle+
+    """
+    Conversación actual: """ +conversacion_actual_formateada
+    
 
 
 def prompt_estado_cliente(estado):
