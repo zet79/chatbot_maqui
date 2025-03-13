@@ -88,21 +88,23 @@ def release_lock(lock):
 
 @celery.task(bind=True)
 def cerrarConversacion(self, conversacion_id_mysql, conversacion_id_mongo, celular):
-    # Guarda el task_id actual
     task_id_actual = self.request.id
-    print(f"Tarea cerrarConversacion iniciada con task_id: {task_id_actual} para el celular: {celular}")
+    # Verificar si esta tarea es la vigente
+    stored = get_scheduled_task_id(f"cerrar_{celular}")
+    if not stored or stored.decode("utf-8") != task_id_actual:
+        print(f"Tarea cerrarConversacion {task_id_actual} no es la vigente para {celular}; abortando.")
+        return
 
+    print(f"Tarea cerrarConversacion iniciada con task_id: {task_id_actual} para el celular: {celular}")
     try:
         dbMySQLManager.actualizar_estado_conversacion(conversacion_id_mysql, 'completada')
-        dbMongoManager.cerrar_conversacion(celular,conversacion_id_mongo)
-
+        dbMongoManager.cerrar_conversacion(celular, conversacion_id_mongo)
     except Exception as e:
         print(f"Error en cerrarConversacion: {e}")
     finally:
-        # Solo limpia el task_id si coincide con el actual
-        task_id_almacenado = get_scheduled_task_id(f"cerrar_{celular}")
-        if task_id_almacenado and task_id_almacenado.decode("utf-8") == task_id_actual:
-            clear_scheduled_task_id(f"cerrar_{celular}")  # Limpieza segura
+        stored = get_scheduled_task_id(f"cerrar_{celular}")
+        if stored and stored.decode("utf-8") == task_id_actual:
+            clear_scheduled_task_id(f"cerrar_{celular}")
 
 @celery.task(bind=True)
 def enviar_respuesta(self, cliente_mysql, conversacion_id_mysql):
@@ -255,7 +257,7 @@ def whatsapp_bot():
             )
             new_task_cerr = cerrarConversacion.apply_async(
                 args=[conversacion_id_mysql,conversacion_activa_id, celular],
-                countdown=500
+                countdown=600
             )
 
             if not (set_scheduled_task_id(f"respuesta_{celular}", new_task_resp.id) and 
