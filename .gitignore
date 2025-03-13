@@ -14,7 +14,5 @@ api_keys.py
 #Ignorar componentes
 components/
 aws_keys/
-
-
 config/
 
