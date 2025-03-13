@@ -1,6 +1,3 @@
-# Ignorar credenciales
-#*.json
-
 # Ignorar el cache de Python
 __pycache__/
 venv
@@ -12,6 +9,5 @@ venv
 api_keys.py
 
 #Ignorar componentes
-aws_keys/
-config/
-
+aws_keys/react_maqui.pem
+config/service_account_credentials.json
