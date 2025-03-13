@@ -7,6 +7,7 @@ import threading
 import time
 import pytz
 import redis
+from redlock import Redlock
 import datetime as dt
 from datetime import datetime, timedelta
 from flask import Flask, request, jsonify
@@ -20,6 +21,8 @@ from helpers.helpers import format_number, extraer_json, json_a_lista
 
 # Configuración de Redis
 r = redis.Redis(host='localhost', port=6379, db=0)
+# Configuración de Redlock para lock distribuido
+dlm = Redlock([{"host": "localhost", "port": 6379, "db": 0}])
 
 # Inicializar Flask
 app = Flask(__name__)
@@ -30,6 +33,7 @@ openai = OpenAIManager()
 calendar = GoogleCalendarManager()
 dbMongoManager = DataBaseMongoDBManager()
 dbMySQLManager = DataBaseMySQLManager()
+lock = threading.Lock()
 
 # Manejo de tareas en Redis
 def get_scheduled_task_id(celular):
@@ -37,9 +41,7 @@ def get_scheduled_task_id(celular):
     return r.get(f"celery_task:{celular}")
 
 def set_scheduled_task_id(celular, task_id):
-    """Guarda en Redis el ID de la tarea Celery pendiente para este celular."""
-    if task_id:
-        r.set(f"celery_task:{celular}", task_id, ex=300)  # Expira en 5 minutos
+    return r.set(f"celery_task:{celular}", task_id, nx=True, ex=300)
 
 def clear_scheduled_task_id(celular):
     """Elimina la referencia en Redis de la tarea pendiente para este celular."""
@@ -53,6 +55,37 @@ def revoke_task(task_id):
     except Exception as e:
         print(f"Error revocando tarea: {e}")
 
+# Funciones para el lock distribuido con reintentos
+def acquire_lock(resource, ttl=10000):
+    """
+    Intenta adquirir un lock distribuido en el recurso dado.
+    :param resource: Clave del recurso (por ejemplo, "lock:+51953983765")
+    :param ttl: Tiempo de vida del lock en milisegundos.
+    :return: El objeto lock si se adquiere, o None.
+    """
+    return dlm.lock(resource, ttl)
+
+def acquire_lock_with_retry(celular, ttl=10000, max_wait=10, interval=0.1):
+    """
+    Intenta adquirir el lock distribuido para el usuario identificado por 'celular'
+    durante un máximo de 'max_wait' segundos, reintentando cada 'interval' segundos.
+    """
+    resource = f"lock:{celular}"
+    start_time = time.time()
+    lock = None
+    while (time.time() - start_time) < max_wait:
+        lock = acquire_lock(resource, ttl)
+        if lock:
+            return lock
+        time.sleep(interval)
+    return None
+
+def release_lock(lock):
+    """Liberamos lock dist."""
+    if lock:
+        dlm.unlock(lock)
+
+
 @celery.task(bind=True)
 def cerrarConversacion(self, conversacion_id_mysql, conversacion_id_mongo, celular):
     # Guarda el task_id actual
@@ -61,7 +94,7 @@ def cerrarConversacion(self, conversacion_id_mysql, conversacion_id_mongo, celul
 
     try:
         dbMySQLManager.actualizar_estado_conversacion(conversacion_id_mysql, 'completada')
-        dbMongoManager.cerrar_conversacion(conversacion_id_mongo)
+        dbMongoManager.cerrar_conversacion(celular,conversacion_id_mongo)
 
     except Exception as e:
         print(f"Error en cerrarConversacion: {e}")
@@ -72,15 +105,15 @@ def cerrarConversacion(self, conversacion_id_mysql, conversacion_id_mongo, celul
             clear_scheduled_task_id(f"cerrar_{celular}")  # Limpieza segura
 
 @celery.task(bind=True)
-def enviar_respuesta(self, cliente_mysql, conversacion_id_mysql, conversation_actual):
-    celular = cliente_mysql["celular"]
+def enviar_respuesta(self, cliente_mysql, conversacion_id_mysql):
     task_id_actual = self.request.id
+    celular = cliente_mysql["celular"]
     print(f"Tarea enviar_respuesta iniciada con task_id: {task_id_actual} para el celular: {celular}")
     nombre = cliente_mysql["nombre"]
     cliente_id_mysql = cliente_mysql["cliente_id"]
     motivo_actual=cliente_mysql['motivo']
     estado_actual = cliente_mysql['estado']
-    
+    conversacion_actual=dbMongoManager.obtener_conversacion_actual(celular)
     print("Enviando respuesta a:", celular)
     
     campanha_registro = dbMySQLManager.asociar_cliente_a_campana_mas_reciente(cliente_id_mysql)
@@ -88,14 +121,15 @@ def enviar_respuesta(self, cliente_mysql, conversacion_id_mysql, conversation_ac
     
     dbMySQLManager.actualizar_fecha_ultima_interaccion(cliente_id_mysql, datetime.now(pytz.utc))
 
-    print("Conversación actual:", conversation_actual)
+    print("Conversación actual:", conversacion_actual)
     
     max_intentos = 5
     intento_actual = 0
     try:
         while intento_actual < max_intentos:
             try:
-                motivo = openai.clasificar_motivo(conversation_actual)
+                
+                motivo = openai.clasificar_motivo(conversacion_actual)
                 print("Intención detectada antes extraer json:", motivo)
                 motivo = extraer_json(motivo)
                 
@@ -126,7 +160,7 @@ def enviar_respuesta(self, cliente_mysql, conversacion_id_mysql, conversation_ac
                     detalle = motivo_list[2]
                     guardar_motivo(motivo_actual, nuevo_motivo, cliente_id_mysql, motivo_list[1])
                     guardar_estado(estado_actual, nuevo_estado, cliente_id_mysql, "Cambio de estado: " + nuevo_estado)
-                    response_message = openai.mensaje_personalizado(nuevo_motivo, nuevo_estado, detalle, conversation_actual)
+                    response_message = openai.mensaje_personalizado(nombre,nuevo_motivo, nuevo_estado, detalle, conversacion_actual)
                     print("Response message json:", response_message)
                     twilio.send_message(celular, response_message)
                     dbMongoManager.guardar_respuesta_ultima_interaccion_chatbot(celular, response_message)
@@ -166,25 +200,29 @@ def whatsapp_bot():
         
         cliente = dbMongoManager.obtener_cliente_por_celular(celular)
         print("cliente_mongo:", cliente, type(cliente))
-        if not cliente: 
+        if not cliente:
+            response_message = "¡Hola! Esta es la línea de reactivaciones y hemos observado que no tienes reactivaciones pendientes o no estás registrado en el sistema. Te invitamos a contactar al número +51953983765 para más información." 
+            twilio.send_message(celular, response_message)
             return
 
         #Buscar al cliente
         cliente_mysql = dbMySQLManager.obtener_cliente_por_celular(celular)
         print("cliente_mysql:", cliente_mysql, type(cliente_mysql))
         if not cliente_mysql:
+            response_message = "¡Hola! Esta es la línea de reactivaciones y hemos observado que no tienes reactivaciones pendientes o no estás registrado en el sistema. Te invitamos a contactar al número +51953983765 para más información." 
+            twilio.send_message(celular, response_message)
             return 
         
         if cliente_mysql["nombre"].strip() == "":
             cliente_mysql["nombre"] = profileName
             dbMySQLManager.actualizar_nombre_cliente(cliente_mysql["cliente_id"], profileName)
         
-        conversacion_activa=dbMongoManager.obtener_conversacion_actual(celular)
-        if not conversacion_activa:
+        conversacion_activa_id=dbMongoManager.obtener_conversacion_actual_id(celular)
+        if not conversacion_activa_id:
             # Se crea una conversacion activa, solo se crea
             print("Creando una nueva conversación activa para el cliente.")
             dbMongoManager.crear_conversacion_activa(celular)
-            conversacion_activa=dbMongoManager.obtener_conversacion_actual(celular)
+            conversacion_activa_id=dbMongoManager.obtener_conversacion_actual_id(celular)
         
         conversacion_mysql = dbMySQLManager.obtener_conversacion_activa(cliente_mysql["cliente_id"])
         if not conversacion_mysql:
@@ -195,7 +233,6 @@ def whatsapp_bot():
                 resultado=None,
                 estado_conversacion="activa"
             )
-
         else:
             conversacion_id_mysql = conversacion_mysql["conversacion_id"]
         # Agrega la interacción del cliente a la conversación actual
@@ -204,35 +241,45 @@ def whatsapp_bot():
         dbMongoManager.crear_nueva_interaccion(celular, incoming_msg)
         print("Interacción del cliente guardada en la conversación actual.")  
 
-       
-        task_id_resp = get_scheduled_task_id(f"respuesta_{celular}")
-        task_id_cerr= get_scheduled_task_id(f"cerrar_{celular}")
-
-        if task_id_resp:
-            print(f"Revocando tarea de respuesta {task_id_resp.decode('utf-8')} para {celular}")
-            revoke_task(task_id_resp.decode('utf-8'))  # Revocar tarea de respuesta
-            clear_scheduled_task_id(f"respuesta_{celular}")  # Eliminar task_id de Redis
-
-        if task_id_cerr:
-            print(f"Revocando tarea de cierre {task_id_cerr.decode('utf-8')} para {celular}")
-            revoke_task(task_id_cerr.decode('utf-8'))  # Revocar tarea de cierre
-            clear_scheduled_task_id(f"cerrar_{celular}")  # Eliminar task_id de Redis
-
-        # Llama a la tarea de Celery con un retraso de 2 segundos
-        new_task_resp = enviar_respuesta.apply_async(
-            args=[cliente_mysql,conversacion_id_mysql,conversacion_activa],
-            countdown=30
-        )
-
-        if conversacion_activa and "conversacion_id" in conversacion_activa:
+        lock_distribuido = acquire_lock_with_retry(celular, ttl=10000, max_wait=20, interval=0.1)
+        if not lock_distribuido:
+            print(f"No se pudo adquirir lock para {celular} tras esperar 20 segundos.")
+            response_message = "Lo siento, hubo un problema al procesar tu mensaje. Inténtalo más tarde."
+            twilio.send_message(celular, response_message)
+            return 'OK', 200
+        
+        try:
+            new_task_resp = enviar_respuesta.apply_async(
+                args=[cliente_mysql, conversacion_id_mysql],
+                countdown=30
+            )
             new_task_cerr = cerrarConversacion.apply_async(
-                args=[conversacion_id_mysql, conversacion_activa.get("conversacion_id"), celular],
-                countdown=630
+                args=[conversacion_id_mysql,conversacion_activa_id, celular],
+                countdown=500
             )
 
-        set_scheduled_task_id(f"respuesta_{celular}", new_task_resp.id)
-        set_scheduled_task_id(f"cerrar_{celular}", new_task_cerr.id)
-
+            if not (set_scheduled_task_id(f"respuesta_{celular}", new_task_resp.id) and 
+                    set_scheduled_task_id(f"cerrar_{celular}", new_task_cerr.id)):
+                task_id_resp = get_scheduled_task_id(f"respuesta_{celular}")
+                if task_id_resp:
+                    print(f"Revocando tarea de respuesta {task_id_resp.decode('utf-8')} para {celular}")
+                    revoke_task(task_id_resp.decode('utf-8'))
+                    clear_scheduled_task_id(f"respuesta_{celular}")
+                
+                task_id_cerr = get_scheduled_task_id(f"cerrar_{celular}")
+                if task_id_cerr:
+                    print(f"Revocando tarea de cierre {task_id_cerr.decode('utf-8')} para {celular}")
+                    revoke_task(task_id_cerr.decode('utf-8'))
+                    clear_scheduled_task_id(f"cerrar_{celular}")
+                
+                # Intentar nuevamente establecer las claves:
+                set_scheduled_task_id(f"respuesta_{celular}", new_task_resp.id)
+                set_scheduled_task_id(f"cerrar_{celular}", new_task_cerr.id)
+        
+        finally:
+            # Liberar el lock distribuido
+            release_lock(lock_distribuido)
+        
         return 'OK', 200
 
     except Exception as e:

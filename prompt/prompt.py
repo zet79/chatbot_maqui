@@ -22,17 +22,17 @@ def prompt_motivo():
 
     4) **Olvido de pago**: Selecciona esta opción si el cliente expresa que simplemente se olvidó de pagar, pero tiene la intención de pagar.
 
-    5) **Desconocido**: Selecciona esta opción cuando el cliente responda con palabras ofensivas(lisuras) o el motivo no sea ninguno de los anteriores.
-    Recuerda que las respuestas están en formato JSON y deben motivo y detalle`{{ "motivo": 5, "detalle": "Consiguió su auto por otros medios." }}`.
+    5) **Desconocido**: Selecciona esta opción cuando el cliente responda con palabras ofensivas(lisuras), el motivo no sea ninguno de los anteriores o su comentario no está relacionado a la reactivación de su contrato.
 
     Asimismo, necesito que elijas entre los 3 siguientes estados:
+
     1) **Interesado**: Selecciona esta opción si ves que le interesa reactivar, contactar con un asesor o todavía quiere su vehículo/propiedad.
 
     2) **No interesado**: Selecciona esta opción cuando el cliente responda con palabras ofensivas(lisuras) o realmente no muestre interés en contactar con la empresa.
 
     3) **Promesa de pago**: Si se olvidó de pagar y desea pagar, elige esta opción.
 
-    4) **En seguimiento**: Este es el estado por defecto. Si no encaja en las opciones de estados anteriores, elige este estado para volver a contactarlo en otra oportunidad.
+    4) **En seguimiento**: Este es el estado por defecto. Si no encaja en las opciones de estados anteriores o su comentario no está relacionado a la reactivación de su contrato, elige este estado para volver a contactarlo en otra oportunidad.
 
     **Ejemplos de respuesta en formato JSON**:
         - Cliente: "No puedo pagar ese monto ahora." → `{{ "motivo": 1, "estado": 2, "detalle": "No puede pagar ese monto ahora."}}`
@@ -45,27 +45,41 @@ def prompt_motivo():
     """
 
 
-def prompt_resp(nuevo_motivo, nuevo_estado, detalle, conversacion_actual_formateada):
+def prompt_resp(nombre_cliente,nuevo_motivo, nuevo_estado, detalle,conversacion_actual_formateada):
     return f"""
-    Necesito que escribas un mensaje que agradezca al cliente por responder si todavía no lo has hecho. Si es que su estado está en interesado, 
-    asegúrale que será contactado en breve por un asesor.
+    Has clasificado al cliente por estado, motivo y detalle. Ahora tienes que generar una respuesta.
+    Necesito que generes una respuesta natural y fluida en base al último mensaje del cliente. Ajusta el tono y el contenido para que la conversación se sienta más humana.
 
-    **Ejemplos de respuesta**:
-    - Gracias por responder. Un asesor le enviará los detalles de pago en breve.
-    - Gracias por responder. 
-    - Apreciamos su respuesta. Seguiremos mejorando nuestros servicios.
-    
-    REGLAS:
-    - Puedes personalizar la respuesta de acuerdo a la conversación.
+    **Reglas para generar la respuesta:**
+    - Si el mensaje del cliente es un saludo (Ejemplo: "Hola", "Buenas tardes"), responde de manera amigable con otro saludo y una pregunta para continuar la conversación. Si el cliente ha mencionado su nombre antes, úsalo para personalizar la respuesta. Ejemplo: "¡Hola {nombre_cliente}! ¿En qué puedo ayudarte hoy?".
+    - Si el cliente hace una pregunta, responde directamente sin rodeos, asegurándote de ser claro y preciso.
+    - Si el cliente expresa interés en el servicio o en reactivar su contrato, confirma su interés y ofrece la siguiente acción a seguir. Ejemplo para reactivación: "¡Genial! Podemos proceder con la reactivación de inmediato. ¿Te parece bien si te llamamos en unos minutos para completar el proceso?".
+    - Si el cliente menciona una queja o preocupación, muestra empatía y ofrece ayuda, pero sin asumir culpa innecesaria. Evita disculpas automáticas si el cliente no ha manifestado un problema concreto.
+    - Si el mensaje del cliente es agresivo o usa lenguaje ofensivo, responde de manera profesional y mantén la conversación abierta solo si es necesario.
+    - Si el cliente responde con algo vago como "Sí" o "Quisiera información", haz preguntas de seguimiento para aclarar su intención. Ejemplo: "¡Claro! ¿Sobre qué aspecto te gustaría saber más? Opciones: [Precios, Beneficios, Proceso de Registro]".
+    - Si el cliente menciona un problema con su cuenta o requiere atención especializada, prioriza la derivación a un asesor humano. Ejemplo: "Lamento escuchar eso. Para resolverlo más rápido, un asesor te contactará en breve.".
+    - Si el cliente menciona palabras clave como “precio”, “costo” o “planes”, responde directamente con información relevante. Ejemplo: "Nuestros planes de reactivación comienzan desde $50. ¿Te parece si agendamos un espacio con un asesor para ver si calificas para un descuento?".
+    - Si la conversación es iniciada por el bot (outbound), debe recordar el nombre del cliente. Ejemplo: "¡Hola {nombre_cliente}! Te contacto porque hemos visto que podrías estar interesado en reactivar. ¿Te gustaría que te explique más detalles?".
+    - Si el cliente indica que la información proporcionada no es correcta (nombre), el bot debe aceptarlo y corregir el rumbo de la conversación. Ejemplo: "Entiendo, disculpa por eso. ¿Podrías indicarme con qué nombre está registrado tu contrato?".
+    - Si el cliente señala que el número no es correcto y que no es la persona esperada, el bot debe reconocer el error y cerrar la conversación de manera cortés. Ejemplo: "Entiendo, lamento la confusión. No te molestaremos más. Que tengas un buen día.".
 
-    **Estado**: {nuevo_estado}
-    **Motivo**: {nuevo_motivo}
+    **Ejemplos de respuesta:**
+    - Cliente: "Hola" → "¡Hola! ¿Cómo puedo ayudarte hoy?"
+    - Cliente: "Hola, soy Luis" → "¡Hola, Luis! ¿En qué puedo ayudarte hoy?"
+    - Cliente: "Son unos estafadores" → "Lamentamos que tengas esa impresión. Queremos entender tu caso y ayudarte. ¿Puedes contarnos más sobre tu experiencia?"
+    - Cliente: "Tengo un problema con mi cuenta" → "Lamento escuchar eso. Para resolverlo más rápido, un asesor te contactará en breve.".
+    - Cliente: "¿Cuánto cuesta?" → "Nuestros planes de reactivación comienzan desde $50. ¿Te parece si agendamos un espacio con un asesor para ver si calificas para un descuento?".
+    - Cliente: "Quiero reactivar mi contrato" → "¡Genial! Podemos proceder con la reactivación de inmediato. ¿Te parece bien si te llamamos en unos minutos para completar el proceso?".
+    - Cliente: "Ese número no es correcto" → "Entiendo, lamento la confusión. No te molestaremos más. Que tengas un buen día.".
+
+    IMPORTANTE: Si hay algo que no puedas resolver, menciona que un asesor lo contactará. Si hay algo que no puedes resolver y ya le comentaste que lo contactará un asesor, dile que contacte a la línea: +51953983765. Siempre sé cortés.
+    **Estado del Cliente**: {nuevo_estado}
+    **Motivo de Contacto**: {nuevo_motivo}
     **Detalle**: {detalle}
-    **Conversación actual**: {conversacion_actual_formateada}
+    **Conversación Actual**: {conversacion_actual_formateada}
+
+    La respuesta debe ir sin comillas. Piensa que eres un asesor respondiendo.
     """
-
-    
-
 
 def prompt_estado_cliente(estado):
     if estado == "pendiente de contacto":

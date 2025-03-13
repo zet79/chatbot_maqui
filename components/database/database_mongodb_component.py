@@ -60,6 +60,16 @@ class DataBaseMongoDBManager:
                 if conversacion.get("estado") == "activa":
                     return conversacion
         return None
+        
+    def obtener_conversacion_actual_id(self, celular):
+        self._reconnect_if_needed()  # Verifica o reconecta
+        """Obtiene la conversación actual del cliente si está activa."""
+        cliente = self.db.clientes.find_one({"celular": celular})
+        if cliente:
+            for conversacion in cliente.get("conversaciones", []):
+                if conversacion.get("estado") == "activa":
+                    return conversacion.get("conversacion_id")
+        return None
 
     def guardar_interaccion_conversacion_actual(self, cliente_id, mensaje_cliente, mensaje_chatbot):
         self._reconnect_if_needed()  # Verifica o reconecta
@@ -124,7 +134,7 @@ class DataBaseMongoDBManager:
 
         return historial_completado   
 
-    def cerrar_conversacion(celular, conversacion_id_mongo):
+    def cerrar_conversacion(self, celular, conversacion_id_mongo):
         # Actualiza el estado de la conversación específica en MongoDB
         self.db.clientes.update_one(
             {

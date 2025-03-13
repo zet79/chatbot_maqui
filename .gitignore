@@ -1,9 +1,9 @@
 # Ignorar credenciales
-*.json
+#*.json
 
 # Ignorar el cache de Python
 __pycache__/
-
+venv
 # Ignorar hojas de cálculo de Excel
 #*.xlsx
 ~$clientes.xlsx
@@ -14,3 +14,7 @@ api_keys.py
 #Ignorar componentes
 components/
 aws_keys/
+
+
+config/
+

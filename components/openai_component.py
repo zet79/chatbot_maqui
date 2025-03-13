@@ -10,14 +10,14 @@ class OpenAIManager:
         self.client = OpenAI(api_key=openai_api_key)
     #FALTA ARREGLAR ESTO
 
-    def mensaje_personalizado(self, nuevo_motivo,nuevo_estado,detalle,conversation_actual):
+    def mensaje_personalizado(self,nombre,nuevo_motivo,nuevo_estado,detalle,conversation_actual):
         conversacion_actual_formateada = formatear_conversacion(conversation_actual)
         #conversacion_history_formateada = formatear_historial_conversaciones(conversation_history)
         print("Fecha actual",datetime.now(pytz.timezone("America/Lima")).strftime("%Y-%m-%d"))
         response = self.client.chat.completions.create(
             model="gpt-4o",
             messages=[
-                {"role": "system", "content": prompt_resp(nuevo_motivo,nuevo_estado,detalle,conversacion_actual_formateada)},
+                {"role": "system", "content": prompt_resp(nombre,nuevo_motivo,nuevo_estado,detalle,conversacion_actual_formateada)},
                 #{"role": "user", "content": conversacion_actual_formateada}
             ],
             max_tokens=100,

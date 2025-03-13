@@ -39,10 +39,10 @@ VALUES ('patricia@sayainvestments.co','1234',1);
 INSERT INTO persona (persona_id,nombre, primer_apellido, segundo_apellido,celular)
 VALUES (1,'Patricia','Cántaro','Márquez','+51953983765');
 
-INSERT INTO template (nombre_template,mensaje,created_at,template_content_sid)
+INSERT INTO template (nombre_template,mensaje,created_at,template_content_sid,parametro)
 VALUES ('envio1','¡Hola, {NOMBRE_CLIENTE}! 👋
 Hemos notado que tienes pagos pendientes en tus contratos de Maqui+ y nos gustaría saber cómo podemos ayudarte a reactivarlos. 
-¡Esperamos tu respuesta! 😊',CURRENT_TIMESTAMP,'HX23569fa3042566dbd3ba6ceaa1e8e4a1');
+¡Esperamos tu respuesta! 😊',CURRENT_TIMESTAMP,'HX23569fa3042566dbd3ba6ceaa1e8e4a1',1);
 
-INSERT INTO template (nombre_template,mensaje,created_at,template_content_sid)
-VALUES ('pruebita','¡Hola! Tienes contratos pendientes y nos gustaría saber por qué no reactivas con nosotros.',CURRENT_TIMESTAMP,'HX57ffed57805b930892ade47f1147bfbe');
+INSERT INTO template (nombre_template,mensaje,created_at,template_content_sid,parametro)
+VALUES ('pruebita','¡Hola! Tienes contratos pendientes y nos gustaría saber por qué no reactivas con nosotros.',CURRENT_TIMESTAMP,'HX57ffed57805b930892ade47f1147bfbe',0);
