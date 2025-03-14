@@ -10,4 +10,5 @@ api_keys.py
 
 #Ignorar componentes
 aws_keys/react_maqui.pem
+aws_keys/maquireact_prod.pem
 config/service_account_credentials.json

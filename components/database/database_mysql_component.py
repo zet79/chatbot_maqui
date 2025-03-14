@@ -78,41 +78,6 @@ class DataBaseMySQLManager:
         cursor.execute(query, (cliente_id,))
         return cursor.fetchone()
 
-    ''' 
-    def insertar_lead(self, cliente_id, fecha_contacto, prioridad_lead, lead_source, campanha=None, canal_lead=None, estado_lead="nuevo", notas=None):
-        self._reconnect_if_needed()
-        """Inserta un nuevo lead para un cliente en la tabla de leads."""
-        cursor = self.connection.cursor()
-        query = """INSERT INTO leads (cliente_id, fecha_contacto, prioridad_lead, lead_source, campanha, canal_lead, estado_lead, notas)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"""
-        cursor.execute(query, (cliente_id, fecha_contacto, prioridad_lead, lead_source, campanha, canal_lead, estado_lead, notas))
-        self.connection.commit()
-        return cursor.lastrowid
-    '''
-
-    '''
-    def insertar_lead_zoho(self, cliente_id, fecha_contacto, prioridad_lead, lead_source, campanha=None, canal_lead=None, estado_lead="nuevo", notas=None, tipo_lead=None):
-        self._reconnect_if_needed()
-        """Inserta un nuevo lead para un cliente en la tabla de leads."""
-        cursor = self.connection.cursor()
-        query = """INSERT INTO leads (cliente_id, fecha_contacto, prioridad_lead, lead_source, campanha, canal_lead, estado_lead, notas,tipo)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s,%s)"""
-        cursor.execute(query, (cliente_id, fecha_contacto, prioridad_lead, lead_source, campanha, canal_lead, estado_lead, notas,tipo_lead))
-        self.connection.commit()
-        return cursor.lastrowid
-    '''
-
-    '''
-    def obtener_leads_cliente(self, cliente_id):
-        self._reconnect_if_needed()
-        """Obtiene todos los leads de un cliente."""
-        cursor = self.connection.cursor(dictionary=True)
-        query = "SELECT * FROM leads WHERE cliente_id = %s"
-        cursor.execute(query, (cliente_id,))
-        return cursor.fetchall()
-    '''
-
-
     def insertar_cita(self, cliente_id, fecha_cita, estado_cita="agendada", conversacion_id=None):
         self._reconnect_if_needed()
         """Inserta una nueva cita para un cliente en la tabla de citas."""
@@ -122,6 +87,14 @@ class DataBaseMySQLManager:
         cursor.execute(query, (cliente_id, fecha_cita, estado_cita, conversacion_id))
         self.connection.commit()
         return cursor.lastrowid
+
+    def hay_cita_pendiente(self, cliente_id):
+        self._reconnect_if_needed()
+        """Verifica si un cliente tiene al menos una cita pendiente desde el momento actual en adelante."""
+        cursor = self.connection.cursor(dictionary=True)
+        query = "SELECT 1 FROM cita WHERE cliente_id = %s AND fecha_cita > NOW() AND estado_cita = 'pendiente' LIMIT 1"
+        cursor.execute(query, (cliente_id,))
+        return cursor.fetchone() is not None
 
     def obtener_citas_cliente(self, cliente_id):
         self._reconnect_if_needed()
@@ -152,29 +125,6 @@ class DataBaseMySQLManager:
             """
         cursor.execute(query, (estado_cita,))
         return cursor.fetchall()
-
-    '''
-    def insertar_pago(self, cliente_id, cita_id, fecha_pago, monto, metodo_pago, estado_pago="pendiente"):
-        self._reconnect_if_needed()
-        """Inserta un nuevo pago para un cliente en la tabla de pagos."""
-        cursor = self.connection.cursor()
-        query = """INSERT INTO pago (cliente_id, cita_id, fecha_pago, monto, metodo_pago, estado_pago)
-                   VALUES (%s, %s, %s, %s, %s, %s)"""
-        cursor.execute(query, (cliente_id, cita_id, fecha_pago, monto, metodo_pago, estado_pago))
-        self.connection.commit()
-        return cursor.lastrowid
-    '''
-
-    '''
-    def obtener_pagos_cliente(self, cliente_id):
-        self._reconnect_if_needed()
-        """Obtiene todos los pagos de un cliente."""
-        cursor = self.connection.cursor(dictionary=True)
-        query = "SELECT * FROM pago WHERE cliente_id = %s"
-        cursor.execute(query, (cliente_id,))
-        return cursor.fetchall()
-    '''
-
 
     def insertar_conversacion(self, cliente_id, mensaje, resultado=None, estado_conversacion="activa"):
         self._reconnect_if_needed()
@@ -213,6 +163,7 @@ class DataBaseMySQLManager:
         query = "SELECT * FROM conversacion WHERE cliente_id = %s AND estado_conversacion = 'activa'"
         cursor.execute(query, (cliente_id,))
         return cursor.fetchone()
+
 
 
     '''
@@ -411,69 +362,6 @@ class DataBaseMySQLManager:
         self.connection.commit()
         cursor.close()
 
-        
-    '''
-    def agregar_pago_y_confirmar_cita(self, cliente_id, monto, metodo_pago,first_name, last_name):
-        """
-        Agrega un pago relacionado a la cita más próxima del cliente en estado 'agendada'
-        y cambia el estado de esa cita a 'confirmada'.
-        
-        Args:
-            cliente_id (int): ID del cliente.
-            monto (float): Monto del pago.
-            metodo_pago (str): Método de pago utilizado.
-        
-        Returns:
-            int: ID del pago insertado o None si no se encontró cita.
-        """
-        self._reconnect_if_needed()
-        cursor = self.connection.cursor(dictionary=True)
-        
-        # Obtener la cita más próxima en estado 'agendada'
-        query_cita = """
-            SELECT cita_id, fecha_cita FROM citas
-            WHERE cliente_id = %s AND estado_cita = 'agendada'
-            ORDER BY fecha_cita ASC LIMIT 1
-        """
-        cursor.execute(query_cita, (cliente_id,))
-        cita = cursor.fetchone()
-
-        if not cita:
-            print(f"No se encontró ninguna cita 'agendada' para el cliente con ID {cliente_id}.")
-            return None
-
-        cita_id = cita['cita_id']
-        fecha_pago = datetime.now()
-        
-        # Insertar el pago relacionado a la cita encontrada
-        query_pago = """
-            INSERT INTO pago (cliente_id, cita_id, fecha_pago, monto, metodo_pago, estado_pago,first_name,last_name)
-            VALUES (%s, %s, %s, %s, %s, 'completado',%s,%s)
-        """
-        cursor.execute(query_pago, (cliente_id, cita_id, fecha_pago, monto, metodo_pago,first_name,last_name))
-        pago_id = cursor.lastrowid
-
-        # Cambiar el estado de la cita a 'confirmada'
-        query_update_cita = "UPDATE cita SET estado_cita = 'confirmada' WHERE cita_id = %s"
-        cursor.execute(query_update_cita, (cita_id,))
-
-        # Confirmar cambios en la base de datos
-        self.connection.commit()
-        cursor.close()
-        
-        print(f"Pago agregado y cita {cita_id} confirmada para el cliente {cliente_id}.")
-        return pago_id
-    '''
-    '''
-    def marcar_bound(self, cliente_id, bound):
-        self._reconnect_if_needed()
-        cursor = self.connection.cursor()
-        query = "UPDATE cliente SET bound = %s WHERE cliente_id = %s"
-        cursor.execute(query, (bound, cliente_id))
-        self.connection.commit()
-        cursor.close()
-        print(f"Cliente {cliente_id} marcado como bound={bound}.")
-    '''
 
     def obtener_cita_mas_cercana(self, cliente_id):
         """
@@ -652,21 +540,3 @@ class DataBaseMySQLManager:
 
         return resultados
     
-
-    '''
-    def actualizar_in_out_cliente(self, cliente_id, in_out_valor):
-        """
-        Actualiza el campo in_out para un cliente específico.
-
-        Args:
-            cliente_id (int): ID del cliente a actualizar.
-            in_out_valor (bool): Valor booleano que se asignará al campo in_out.
-        """
-        self._reconnect_if_needed()
-        cursor = self.connection.cursor()
-        query = "UPDATE cliente SET in_out = %s WHERE cliente_id = %s"
-        cursor.execute(query, (in_out_valor, cliente_id))
-        self.connection.commit()
-        cursor.close()
-        print(f"Cliente {cliente_id} se ha actualizado el campo in_out a {in_out_valor}.")
-    '''

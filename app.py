@@ -41,7 +41,7 @@ def get_scheduled_task_id(celular):
     return r.get(f"celery_task:{celular}")
 
 def set_scheduled_task_id(celular, task_id):
-    return r.set(f"celery_task:{celular}", task_id, nx=True, ex=300)
+    return r.set(f"celery_task:{celular}", task_id, nx=True, ex=1000)
 
 def clear_scheduled_task_id(celular):
     """Elimina la referencia en Redis de la tarea pendiente para este celular."""
@@ -143,7 +143,7 @@ def enviar_respuesta(self, cliente_mysql, conversacion_id_mysql):
                     if not (motivo_list[1] in [1, 2, 3, 4]):
                         raise ValueError("El estado no está entre 1,2,3 o 4")
 
-                    if motivo_list[0] == 4:
+                    if motivo_list[0] == 4 and dbMySQLManager.hay_cita_pendiente(cliente_id_mysql):
                         lima_tz = pytz.timezone("America/Lima")
                         date = datetime.now(lima_tz) + timedelta(days=3)
                         date_str = date.strftime("%Y-%m-%d %H:%M")
@@ -253,11 +253,11 @@ def whatsapp_bot():
         try:
             new_task_resp = enviar_respuesta.apply_async(
                 args=[cliente_mysql, conversacion_id_mysql],
-                countdown=30
+                countdown=18
             )
             new_task_cerr = cerrarConversacion.apply_async(
                 args=[conversacion_id_mysql,conversacion_activa_id, celular],
-                countdown=600
+                countdown=900
             )
 
             if not (set_scheduled_task_id(f"respuesta_{celular}", new_task_resp.id) and 
