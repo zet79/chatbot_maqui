@@ -1,6 +1,6 @@
 # Ignorar el cache de Python
 __pycache__/
-venv
+venv/
 # Ignorar hojas de cálculo de Excel
 #*.xlsx
 ~$clientes.xlsx
